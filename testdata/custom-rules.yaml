@@ -1,0 +1,14 @@
+# testdata/custom-rules.yaml
+rules:
+  - id: "custom.internal-webhook"
+    description: "Internal Webhook URL exposed"
+    severity: "high"
+    confidence: "high"
+    pattern: "https://hooks\\.internal\\.corp/services/T[0-9A-Z]{8}/B[0-9A-Z]{8}/[0-9A-Za-z]{24}"
+    secret_type: "internal-webhook"
+  - id: "custom.corp-api-key"
+    description: "Corporate API Key"
+    severity: "critical"
+    confidence: "high"
+    pattern: "corp_key_[0-9a-zA-Z]{24}"
+    secret_type: "corp-api-key"

@@ -1,0 +1,131 @@
+name: 'SecretScanner-K8s Security Action'
+description: 'Automated secret credential detection and SARIF / HTML reporting for Kubernetes manifests'
+author: 'SecretScanner-K8s'
+inputs:
+  directory:
+    description: 'Directory containing Kubernetes YAML manifests to scan'
+    required: false
+    default: '.'
+  rules:
+    description: 'Optional path to custom YAML rules definition file'
+    required: false
+    default: ''
+  fail-on:
+    description: 'Minimum finding severity to fail the job (low, medium, high, critical)'
+    required: false
+    default: 'high'
+  generate-html:
+    description: 'Generate standalone static HTML report via Python'
+    required: false
+    default: 'true'
+  output-dir:
+    description: 'Directory where scan results (JSON, SARIF, HTML) will be saved'
+    required: false
+    default: 'secretscanner-output'
+
+outputs:
+  json-path:
+    description: 'Path to generated scan JSON result'
+    value: ${{ steps.scan-step.outputs.json-path }}
+  sarif-path:
+    description: 'Path to generated SARIF report'
+    value: ${{ steps.scan-step.outputs.sarif-path }}
+  html-path:
+    description: 'Path to generated HTML report if requested'
+    value: ${{ steps.report-step.outputs.html-path }}
+  findings-count:
+    description: 'Total number of detected secret findings'
+    value: ${{ steps.scan-step.outputs.findings-count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26'
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Build SecretScanner CLI
+      shell: bash
+      run: |
+        go build -trimpath -ldflags="-s -w" -o /tmp/secretscanner ./cmd/secretscanner
+
+    - name: Execute Secret Scan
+      id: scan-step
+      shell: bash
+      run: |
+        mkdir -p "${{ inputs.output-dir }}"
+        JSON_OUT="${{ inputs.output-dir }}/scan-result.json"
+        SARIF_OUT="${{ inputs.output-dir }}/scan-result.sarif"
+
+        RULES_FLAG=""
+        if [ -n "${{ inputs.rules }}" ]; then
+          RULES_FLAG="-rules ${{ inputs.rules }}"
+        fi
+
+        # Run JSON scan (stdout has pure JSON, stderr has diagnostics)
+        /tmp/secretscanner -dir "${{ inputs.directory }}" $RULES_FLAG -format json > "$JSON_OUT" 2> "${{ inputs.output-dir }}/scan.log" || SCAN_EXIT=$?
+
+        # Run SARIF scan
+        /tmp/secretscanner -dir "${{ inputs.directory }}" $RULES_FLAG -format sarif > "$SARIF_OUT" 2>> "${{ inputs.output-dir }}/scan.log" || true
+
+        echo "json-path=$JSON_OUT" >> "$GITHUB_OUTPUT"
+        echo "sarif-path=$SARIF_OUT" >> "$GITHUB_OUTPUT"
+
+        FINDINGS=$(python -c "import json; data=json.load(open('$JSON_OUT')); print(data.get('summary', {}).get('findings', 0))")
+        echo "findings-count=$FINDINGS" >> "$GITHUB_OUTPUT"
+
+    - name: Generate HTML Report
+      id: report-step
+      if: ${{ inputs.generate-html == 'true' }}
+      shell: bash
+      run: |
+        pip install -e python
+        HTML_OUT="${{ inputs.output-dir }}/report.html"
+        python -m report_generator --input "${{ inputs.output-dir }}/scan-result.json" --output "$HTML_OUT" --format html
+        echo "html-path=$HTML_OUT" >> "$GITHUB_OUTPUT"
+
+    - name: Evaluate Policy Fail-On
+      shell: bash
+      run: |
+        JSON_FILE="${{ inputs.output-dir }}/scan-result.json"
+        FAIL_ON="${{ inputs.fail-on }}"
+
+        python -c "
+        import json, sys
+        with open('$JSON_FILE') as f:
+            data = json.load(f)
+        s = data.get('summary', {})
+        crit = s.get('critical', 0)
+        high = s.get('high', 0)
+        med = s.get('medium', 0)
+        low = s.get('low', 0)
+        errs = s.get('errors', 0)
+
+        fail_level = '$FAIL_ON'.lower()
+        should_fail = False
+
+        if errs > 0:
+            print(f'Workflow policy: Scan encountered {errs} unrecoverable file errors.')
+            should_fail = True
+
+        if fail_level == 'critical' and crit > 0:
+            should_fail = True
+        elif fail_level == 'high' and (crit + high) > 0:
+            should_fail = True
+        elif fail_level == 'medium' and (crit + high + med) > 0:
+            should_fail = True
+        elif fail_level == 'low' and (crit + high + med + low) > 0:
+            should_fail = True
+
+        if should_fail:
+            print(f'Workflow policy check FAILED: fail-on threshold is \"{fail_level}\", detected {crit} critical, {high} high, {med} medium, {low} low findings.')
+            sys.exit(1)
+        else:
+            print(f'Workflow policy check PASSED: finding counts within \"{fail_level}\" tolerance.')
+        "

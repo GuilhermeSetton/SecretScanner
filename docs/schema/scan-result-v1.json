@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://raw.githubusercontent.com/secretscanner/secretscanner-k8s/main/docs/schema/scan-result-v1.json",
+  "title": "SecretScannerScanResult",
+  "description": "Standard output contract produced by SecretScanner-K8s in Go and consumed by report generators and integrations.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "summary",
+    "findings",
+    "errors"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Semantic schema version of the output structure.",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "summary": {
+      "type": "object",
+      "description": "Aggregated execution and severity metrics.",
+      "required": [
+        "files_scanned",
+        "findings",
+        "errors",
+        "critical",
+        "high",
+        "medium",
+        "low",
+        "duration_ms",
+        "scanner_version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "files_scanned": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of YAML documents or files inspected."
+        },
+        "findings": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total count of deduplicated secret findings."
+        },
+        "errors": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total count of recoverable file/syntax scan errors."
+        },
+        "critical": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of findings with Critical severity."
+        },
+        "high": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of findings with High severity."
+        },
+        "medium": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of findings with Medium severity."
+        },
+        "low": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Count of findings with Low severity."
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Execution time in milliseconds."
+        },
+        "scanner_version": {
+          "type": "string",
+          "description": "Version of the SecretScanner-K8s binary."
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "List of detected secrets. Each finding strictly contains only masked values.",
+      "items": {
+        "type": "object",
+        "required": [
+          "rule_id",
+          "description",
+          "severity",
+          "confidence",
+          "file",
+          "line",
+          "column",
+          "field_path",
+          "match"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "description": "Unique identifier of the matching rule."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of the finding."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"],
+            "description": "Severity rating assigned to the finding."
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"],
+            "description": "Confidence level of detection accuracy."
+          },
+          "file": {
+            "type": "string",
+            "description": "Normalized slash-separated file path or source name."
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Line number where the secret scalar resides."
+          },
+          "column": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Column number where the secret scalar resides."
+          },
+          "field_path": {
+            "type": "string",
+            "description": "Structural path to the YAML node (e.g. data.password, spec.template.spec.containers[0].env[0].value)."
+          },
+          "resource": {
+            "type": "string",
+            "description": "Name of the Kubernetes resource from metadata.name."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Kind of the Kubernetes resource (e.g. Deployment, Secret, ConfigMap)."
+          },
+          "match": {
+            "type": "string",
+            "description": "Masked representation of the secret value. Raw secret strings are never emitted."
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "description": "List of per-file recoverable scan warnings and syntax errors.",
+      "items": {
+        "type": "object",
+        "required": [
+          "file",
+          "message"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Normalized path of the problematic file."
+          },
+          "message": {
+            "type": "string",
+            "description": "Sanitized error description without sensitive payload data."
+          }
+        }
+      }
+    }
+  }
+}

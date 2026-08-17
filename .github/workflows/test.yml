@@ -1,0 +1,62 @@
+name: CI Tests & Code Quality
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  test-go:
+    name: Go Lint & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Verify Formatting (gofmt)
+        run: |
+          UNFORMATTED=$(gofmt -l .)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "The following files require gofmt:"
+            echo "$UNFORMATTED"
+            exit 1
+          fi
+
+      - name: Run Go Vet
+        run: go vet ./...
+
+      - name: Run Go Tests with Race Detector
+        run: go test -v -race -cover ./...
+
+      - name: Build Scanner Binary
+        run: go build -trimpath -ldflags="-s -w" -o bin/secretscanner ./cmd/secretscanner
+
+  test-python:
+    name: Python Validation & Report Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python Package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "python[dev]"
+
+      - name: Run Pytest Suite
+        run: pytest python

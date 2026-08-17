@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+# Build Stage
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /src
+
+RUN apk add --no-cache ca-certificates tzdata
+
+COPY go.mod go.sum* ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -ldflags="-s -w -extldflags '-static'" \
+    -o /out/secretscanner \
+    ./cmd/secretscanner
+
+# Final Hardened Stage
+FROM alpine:3.20
+
+RUN apk --no-cache add ca-certificates \
+    && addgroup -g 10001 -S scanner \
+    && adduser -u 10001 -S scanner -G scanner
+
+COPY --from=builder --chown=10001:10001 /out/secretscanner /usr/local/bin/secretscanner
+
+USER 10001:10001
+WORKDIR /workspace
+
+ENTRYPOINT ["/usr/local/bin/secretscanner"]
+CMD ["-help"]

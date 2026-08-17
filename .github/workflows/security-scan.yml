@@ -1,0 +1,45 @@
+name: Security Scan & SARIF Upload
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan-manifests:
+    name: Secret Scan Kubernetes Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run SecretScanner Action
+        id: secretscanner
+        uses: ./
+        with:
+          directory: 'testdata/clean'
+          fail-on: 'high'
+          generate-html: 'true'
+          output-dir: 'scan-output'
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && steps.secretscanner.outputs.sarif-path != ''
+        with:
+          sarif_file: ${{ steps.secretscanner.outputs.sarif-path }}
+          category: 'secretscanner-k8s'
+
+      - name: Upload HTML Report Artifact
+        uses: actions/upload-artifact@v4
+        if: always() && steps.secretscanner.outputs.html-path != ''
+        with:
+          name: secretscanner-html-report
+          path: ${{ steps.secretscanner.outputs.html-path }}
+          retention-days: 14

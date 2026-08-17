@@ -1,0 +1,20 @@
+# Custom Secret Detection Rules for SecretScanner-K8s
+# All custom rule IDs must NOT start with the reserved 'internal.' prefix.
+rules:
+  - id: custom.payment-api-key
+    description: Payment Gateway Restricted API Key exposed
+    severity: critical
+    confidence: high
+    regex: 'paykey_(?:test|live)_[0-9a-zA-Z]{24,34}'
+
+  - id: custom.internal-bot-token
+    description: Internal Bot OAuth Token exposed
+    severity: critical
+    confidence: high
+    regex: 'bot_auth_[0-9a-zA-Z]{32}'
+
+  - id: custom.internal-service-token
+    description: Internal Organization Service Token
+    severity: high
+    confidence: high
+    regex: 'orgtoken_[a-zA-Z0-9]{32}'

@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secretscanner-webhook
+  namespace: secretscanner-system
+  labels:
+    app.kubernetes.io/name: secretscanner-webhook
+    app.kubernetes.io/component: admission-controller
+    app.kubernetes.io/part-of: secretscanner-k8s
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: secretscanner-webhook
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: secretscanner-webhook
+        app.kubernetes.io/component: admission-controller
+    spec:
+      serviceAccountName: secretscanner-webhook
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: webhook
+          image: secretscanner-webhook:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-port=8443"
+            - "-tls-cert=/etc/webhook/certs/tls.crt"
+            - "-tls-key=/etc/webhook/certs/tls.key"
+            - "-mode=enforce"
+            - "-min-severity=high"
+            - "-ignore-namespaces=kube-system,monitoring,secretscanner-system"
+          ports:
+            - name: webhook-https
+              containerPort: 8443
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8443
+              scheme: HTTPS
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          volumeMounts:
+            - name: tls-certs
+              mountPath: /etc/webhook/certs
+              readOnly: true
+      volumes:
+        - name: tls-certs
+          secret:
+            secretName: secretscanner-webhook-tls

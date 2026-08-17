@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecretScanner-K8s Security Report</title>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border-color: #334155;
+      --critical: #ef4444;
+      --high: #f97316;
+      --medium: #eab308;
+      --low: #3b82f6;
+      --success: #10b981;
+      --code-bg: #0f172a;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    header {
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .header-title h1 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .header-title p {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-weight: 700;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .status-passed { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
+    .status-failed { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
+    .status-error { background: #78350f; color: #fde68a; border: 1px solid #d97706; }
+
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+      text-align: center;
+    }
+    .card-label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .card-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .val-critical { color: var(--critical); }
+    .val-high { color: var(--high); }
+    .val-medium { color: var(--medium); }
+    .val-low { color: var(--low); }
+
+    .section {
+      margin-bottom: 2.5rem;
+    }
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #fff;
+      border-left: 4px solid var(--low);
+      padding-left: 0.75rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border-radius: 0.5rem;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+    th, td {
+      padding: 0.875rem 1rem;
+      text-align: left;
+      font-size: 0.875rem;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: top;
+    }
+    th {
+      background: #111827;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-critical { background: #7f1d1d; color: #fca5a5; }
+    .badge-high { background: #7c2d12; color: #fdba74; }
+    .badge-medium { background: #713f12; color: #fde047; }
+    .badge-low { background: #1e3a8a; color: #93c5fd; }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.25rem;
+      font-size: 0.8125rem;
+      color: #38bdf8;
+      word-break: break-all;
+    }
+    .remediation {
+      font-size: 0.8125rem;
+      color: #94a3b8;
+      margin-top: 0.375rem;
+      background: rgba(15, 23, 42, 0.5);
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+      border-left: 3px solid #64748b;
+    }
+    .location-tag {
+      color: #a5b4fc;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.8125rem;
+    }
+    .empty-state {
+      padding: 3rem;
+      text-align: center;
+      color: var(--text-secondary);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+    }
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding-top: 1.5rem;
+      margin-top: 3rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-title">
+        <h1>SecretScanner-K8s Report</h1>
+        <p>Scanner Version: {{ summary.scanner_version }} | Schema: v{{ schema_version }} | Duration: {{ summary.duration_ms }}ms</p>
+      </div>
+      <div>
+        {% if status == "PASSED" %}
+          <span class="status-badge status-passed">PASSED</span>
+        {% elif status == "FAILED" %}
+          <span class="status-badge status-failed">FINDINGS DETECTED</span>
+        {% else %}
+          <span class="status-badge status-error">SCAN ERROR</span>
+        {% endif %}
+      </div>
+    </header>
+
+    <div class="grid-cards">
+      <div class="card">
+        <div class="card-label">Files Scanned</div>
+        <div class="card-value">{{ summary.files_scanned }}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Findings</div>
+        <div class="card-value">{{ summary.findings }}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Critical</div>
+        <div class="card-value val-critical">{{ summary.critical }}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">High</div>
+        <div class="card-value val-high">{{ summary.high }}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Medium</div>
+        <div class="card-value val-medium">{{ summary.medium }}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Low</div>
+        <div class="card-value val-low">{{ summary.low }}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Scan Errors</div>
+        <div class="card-value">{{ summary.errors }}</div>
+      </div>
+    </div>
+
+    {% if rule_distribution %}
+    <div class="section">
+      <h2 class="section-title">Rule Distribution</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Rule ID</th>
+            <th>Severity</th>
+            <th>Description</th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rule_id, info in rule_distribution.items() %}
+          <tr>
+            <td><code>{{ rule_id }}</code></td>
+            <td><span class="badge badge-{{ info.severity }}">{{ info.severity }}</span></td>
+            <td>{{ info.description }}</td>
+            <td><strong>{{ info.count }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <div class="section">
+      <h2 class="section-title">Detailed Findings</h2>
+      {% if findings %}
+      <table>
+        <thead>
+          <tr>
+            <th>Severity</th>
+            <th>Rule & Description</th>
+            <th>Location</th>
+            <th>Resource</th>
+            <th>Field & Masked Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for finding in findings %}
+          <tr>
+            <td><span class="badge badge-{{ finding.severity }}">{{ finding.severity }}</span></td>
+            <td>
+              <code>{{ finding.rule_id }}</code>
+              <div style="font-size: 0.8125rem; color: #cbd5e1; margin-top: 0.25rem;">{{ finding.description }}</div>
+              <div class="remediation"><strong>Remediation:</strong> {{ finding.remediation }}</div>
+            </td>
+            <td>
+              <span class="location-tag">{{ finding.file }}:{{ finding.line }}:{{ finding.column }}</span>
+            </td>
+            <td>
+              {% if finding.kind or finding.resource %}
+                <strong>{{ finding.kind or 'Resource' }}</strong> / {{ finding.resource or 'Unnamed' }}
+              {% else %}
+                <span style="color: var(--text-secondary);">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="margin-bottom: 0.375rem;"><span style="color: var(--text-secondary);">Field:</span> <code>{{ finding.field_path }}</code></div>
+              <div><span style="color: var(--text-secondary);">Match:</span> <code>{{ finding.match }}</code></div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <p>No secret credentials detected in scanned manifests.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if errors %}
+    <div class="section">
+      <h2 class="section-title" style="border-left-color: var(--critical);">Scan Warnings & Errors</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for error in errors %}
+          <tr>
+            <td><code>{{ error.file }}</code></td>
+            <td style="color: #fca5a5;">{{ error.message }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    <footer>
+      SecretScanner-K8s | Automated Security Analysis for Kubernetes Manifests | Go Engine + Python Reporter
+    </footer>
+  </div>
+</body>
+</html>

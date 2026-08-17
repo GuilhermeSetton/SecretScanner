@@ -1,0 +1,49 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: secretscanner-k8s-webhook
+  labels:
+    app.kubernetes.io/name: secretscanner-webhook
+    app.kubernetes.io/component: admission-controller
+    app.kubernetes.io/part-of: secretscanner-k8s
+webhooks:
+  - name: validate.secretscanner.k8s
+    admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: secretscanner-webhook
+        namespace: secretscanner-system
+        path: /validate
+        port: 443
+      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURQVENDQWlXZ0F3SUJBZ0lEQXhkcE1BMEdDU3FHU0liM0RRRUJDd1VBTUQ4eEdqQVlCZ05WQkFvVEVWTmwKWTNKbGRGTmpZVzV1WlhJdFN6aHpNU0V3SHdZRFZRUURFeGhUWldOeVpYUlRZMkZ1Ym1WeUlGZGxZbWh2YjJzZwpRMEV3SGhjTk1qWXdPREUzTURNeE1EQTJXaGNOTWpjd09ERTNNRE15TURBMldqQS9NUm93R0FZRFZRUUtFeEZUClpXTnlaWFJUWTJGdWJtVnlMVXM0Y3pFaE1COEdBMVVFQXhNWVUyVmpjbVYwVTJOaGJtNWxjaUJYWldKb2IyOXIKSUVOQk1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdEVKcitnQUxFSEZYU0ZoaApHMjBvQkZtSDk5TkFicm51U0RJMnBIVno5S3dnYW9xbVYxZ1ZwU05nNG9PKytJMUtTU2tNbkdJYVZWZk0xd0k1Cm10eVh5cHFjUzVRanZsTGxQeXJHb2cyRVBqYWZucTIwRGRiYUNXaDFiYXY0bjl4Yml1U1I2bXd3czlzR0Zha0gKNVR2TU5lNm1GWnRLRi9Hb2NaSTRiT1IrVGwxeTN2ZlNBR1YzZUd4UE9STjA2RWxPUmxOR1Irbm1Mb3FUcE02WAplZTdXVWZ3M1VRRWx0UEVhSlBYb3htTm5QampvQWZKVno5cmtpT1lKZUREVFowdTJWWU1LV3lENENjRERxTmxMCk14dVcrejRObUZTWmppT3MydXFzbUFmM2pVM285Yk5CZHdWVGVDMTcxbjZOY041b2JaaE5UMXpkOGJjWVE4VjQKOXlHVFV3SURBUUFCbzBJd1FEQU9CZ05WSFE4QkFmOEVCQU1DQVlZd0R3WURWUjBUQVFIL0JBVXdBd0VCL3pBZApCZ05WSFE0RUZnUVVJcHNuZVJmNkRTZHUwR09vT3JhVGRWTCtuUHd3RFFZSktvWklodmNOQVFFTEJRQURnZ0VCCkFCQ1NiRG55L3ozRDROMThHd2kyWEFWbSsyUUFsRTRURmJuMFlxaDluY3hoMGhwYkFhTUhlMkxUa3lFbk1GbW4Kb0ROTzVwU0t4NlI3aUcxU2J5c1R1RjJrTThZZ0xmcXV2YlpXMFh2MzlEVzFiOS8ranlaNzBjc2N0THBURHBxRwoxNTg3d2hhQzFIalNzYUoyajJ1eU0xcmEyY1ZmQ2J0SVhEMXJKb1BSYmlDSTVFc1c5QXRQbEt1OWhrbG5CbWIzCmcyWmdIS3dzM24vd28yV3VWNDFjUmZRTHBlWmdtbC80cnRIVXRQdXYwM2M0ZjFBbnlrNTFkVkFOUG5tcnRMN2MKSmw5SEVGV2tLMWQwbHMrRHlsb2JvZXpjKzVCVkRSdU9tbWVmQU9GNjFkUTFYRm9RNm5KVVJEYnRMZitxczdKSwpDdG1GUWZKaXNxRTUzalMzTC9aaDlxMD0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+    rules:
+      - operations:
+          - CREATE
+          - UPDATE
+        apiGroups:
+          - ""
+          - "apps"
+          - "batch"
+        apiVersions:
+          - v1
+          - v1beta1
+        resources:
+          - pods
+          - deployments
+          - statefulsets
+          - daemonsets
+          - jobs
+          - cronjobs
+          - configmaps
+          - secrets
+    failurePolicy: Fail
+    sideEffects: None
+    timeoutSeconds: 5
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
+            - secretscanner-system

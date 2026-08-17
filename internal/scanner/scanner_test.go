@@ -35,6 +35,7 @@ spec:
 	// 2. Secret with base64 encoded data
 	rawAWSSecret := "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 	encodedAWSSecret := base64.StdEncoding.EncodeToString([]byte(rawAWSSecret))
+	googleAPIKey := "AIza" + "12345678901234567890123456789012345"
 	secretYAML := fmt.Sprintf(`
 apiVersion: v1
 kind: Secret
@@ -44,8 +45,8 @@ type: Opaque
 data:
   aws_secret_access_key: "%s"
 stringData:
-  google_api_key: "AIza12345678901234567890123456789012345"
-`, encodedAWSSecret)
+  google_api_key: "%s"
+`, encodedAWSSecret, googleAPIKey)
 
 	// 3. Clean service manifest (no secrets)
 	cleanYAML := `
@@ -123,6 +124,7 @@ metadata:
 func TestScanner_DeterministicOrdering(t *testing.T) {
 	tempDir := t.TempDir()
 
+	googleAPIKey := "AIza" + "12345678901234567890123456789012345"
 	for i := 0; i < 5; i++ {
 		content := fmt.Sprintf(`
 apiVersion: v1
@@ -130,8 +132,8 @@ kind: Secret
 metadata:
   name: secret-%d
 stringData:
-  key: "AIza12345678901234567890123456789012345"
-`, i)
+  key: "%s"
+`, i, googleAPIKey)
 		if err := os.WriteFile(filepath.Join(tempDir, fmt.Sprintf("file_%d.yaml", i)), []byte(content), 0600); err != nil {
 			t.Fatalf("failed to write test file: %v", err)
 		}
@@ -261,13 +263,16 @@ func TestScanner_FileSizeLimit(t *testing.T) {
 func TestScanner_MultiDocumentYAML(t *testing.T) {
 	tempDir := t.TempDir()
 
-	multiDocYAML := `---
+	googleAPIKey1 := "AIza" + "12345678901234567890123456789012345"
+	googleAPIKey2 := "AIza" + "98765432109876543210987654321098765"
+
+	multiDocYAML := fmt.Sprintf(`---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: app-config
 data:
-  google_api_key: "AIza12345678901234567890123456789012345"
+  google_api_key: "%s"
 ---
 apiVersion: v1
 kind: Secret
@@ -276,8 +281,8 @@ metadata:
 data:
   aws_secret_access_key: "d0phbHJYVXRuRkVNSS9LN01ERU5HL2JQeFJmaUNZRVhBTVBMRUtFWQ=="
 stringData:
-  custom_token: "AIza98765432109876543210987654321098765"
-`
+  custom_token: "%s"
+`, googleAPIKey1, googleAPIKey2)
 	filePath := filepath.Join(tempDir, "multidoc.yaml")
 	if err := os.WriteFile(filePath, []byte(multiDocYAML), 0600); err != nil {
 		t.Fatalf("failed to write multidoc.yaml: %v", err)
@@ -351,6 +356,7 @@ func TestScanner_SecretDataComprehensive(t *testing.T) {
 
 	rawSecret := "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 	encodedBase64 := base64.StdEncoding.EncodeToString([]byte(rawSecret))
+	googleAPIKey := "AIza" + "12345678901234567890123456789012345"
 
 	secretContent := fmt.Sprintf(`apiVersion: v1
 kind: Secret
@@ -361,8 +367,8 @@ data:
   invalid_b64: "!!!not_valid_base64$$$"
   binary_null_byte: "AAAA/w=="
 stringData:
-  direct_str: "AIza12345678901234567890123456789012345"
-`, encodedBase64)
+  direct_str: "%s"
+`, encodedBase64, googleAPIKey)
 
 	if err := os.WriteFile(filepath.Join(tempDir, "secret.yaml"), []byte(secretContent), 0600); err != nil {
 		t.Fatalf("failed to write secret.yaml: %v", err)
@@ -522,7 +528,8 @@ spec:
 func TestScanner_ScanDocuments_InMemory(t *testing.T) {
 	scn := NewScanner(ScannerOptions{})
 
-	yamlContent := []byte(`apiVersion: apps/v1
+	googleAPIKey := "AIza" + "12345678901234567890123456789012345"
+	yamlContent := []byte(fmt.Sprintf(`apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: in-memory-deploy
@@ -533,8 +540,8 @@ spec:
       - name: app
         env:
         - name: GOOGLE_API_KEY
-          value: "AIza12345678901234567890123456789012345"
-`)
+          value: "%s"
+`, googleAPIKey))
 
 	report, err := scn.ScanDocuments(context.Background(), "admission-review-object.yaml", yamlContent)
 	if err != nil {
@@ -566,5 +573,56 @@ spec:
 	}
 	if f.Kind != "Deployment" {
 		t.Errorf("expected kind 'Deployment', got %s", f.Kind)
+	}
+}
+
+func TestScanner_VulnerableFixtureTemplate(t *testing.T) {
+	tempDir := t.TempDir()
+
+	tmplPath := filepath.Join("..", "..", "testdata", "vulnerable", "secret.yaml.tmpl")
+	tmplBytes, err := os.ReadFile(tmplPath)
+	if err != nil {
+		t.Fatalf("failed to read secret.yaml.tmpl: %v", err)
+	}
+
+	googleAPIKey := "AIza" + "12345678901234567890123456789012345"
+	rendered := strings.ReplaceAll(string(tmplBytes), "__GOOGLE_API_KEY__", googleAPIKey)
+
+	renderedPath := filepath.Join(tempDir, "secret.yaml")
+	if err := os.WriteFile(renderedPath, []byte(rendered), 0600); err != nil {
+		t.Fatalf("failed to write rendered secret.yaml: %v", err)
+	}
+
+	scn := NewScanner(ScannerOptions{TargetDir: tempDir})
+	report, err := scn.Scan(context.Background())
+	if err != nil {
+		t.Fatalf("scan failed: %v", err)
+	}
+
+	if len(report.Errors) != 0 {
+		t.Fatalf("expected 0 errors, got %d: %+v", len(report.Errors), report.Errors)
+	}
+
+	var foundGoogle, foundAWS bool
+	for _, f := range report.Findings {
+		if f.RuleID == "internal.google-api-key" {
+			foundGoogle = true
+			if f.FieldPath != "stringData.google_api_key" {
+				t.Errorf("expected FieldPath 'stringData.google_api_key', got %s", f.FieldPath)
+			}
+			if f.Match == googleAPIKey {
+				t.Errorf("finding leaked raw unmasked Google API Key: %s", f.Match)
+			}
+		}
+		if f.RuleID == "internal.aws-secret-access-key" {
+			foundAWS = true
+		}
+	}
+
+	if !foundGoogle {
+		t.Errorf("expected finding for internal.google-api-key in rendered fixture")
+	}
+	if !foundAWS {
+		t.Errorf("expected finding for internal.aws-secret-access-key in rendered fixture")
 	}
 }

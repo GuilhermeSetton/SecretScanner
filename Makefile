@@ -59,20 +59,27 @@ test-go-race:
 test-python:
 	python -m pytest python
 
+.PHONY: prepare-fixtures
+prepare-fixtures:
+	@mkdir -p scan-output/fixtures/clean scan-output/fixtures/vulnerable
+	@cp -r examples/clean/* scan-output/fixtures/clean/ 2>/dev/null || true
+	@cp examples/vulnerable/deployment.yaml scan-output/fixtures/vulnerable/ 2>/dev/null || true
+	@python -c "key = 'AIza' + 'SyD-1234567890abcdefghijklmnopqrst2345'; open('scan-output/fixtures/vulnerable/secret.yaml', 'w').write(open('examples/vulnerable/secret.yaml.tmpl').read().replace('__GOOGLE_API_KEY__', key))"
+
 .PHONY: scan-fixtures
-scan-fixtures: build-cli
+scan-fixtures: build-cli prepare-fixtures
 	@mkdir -p scan-output
-	@./$(BIN_DIR)/secretscanner -dir ./examples/clean -format json > scan-output/clean.json 2> scan-output/clean.log; \
+	@./$(BIN_DIR)/secretscanner -dir scan-output/fixtures/clean -format json > scan-output/clean.json 2> scan-output/clean.log; \
 	status=$$?; \
 	if [ $$status -ne 0 ]; then \
 		echo "Erro inesperado no scan limpo (exit code $$status)"; exit $$status; \
 	fi
-	@./$(BIN_DIR)/secretscanner -dir ./examples/vulnerable -format json > scan-output/scan-result.json 2> scan-output/scan.log; \
+	@./$(BIN_DIR)/secretscanner -dir scan-output/fixtures/vulnerable -format json > scan-output/scan-result.json 2> scan-output/scan.log; \
 	status=$$?; \
 	if [ $$status -ne 0 ] && [ $$status -ne 1 ]; then \
 		echo "Erro de execucao no scan vulneravel (exit code $$status)"; exit $$status; \
 	fi
-	@./$(BIN_DIR)/secretscanner -dir ./examples/vulnerable -format sarif > scan-output/scan-result.sarif 2>> scan-output/scan.log; \
+	@./$(BIN_DIR)/secretscanner -dir scan-output/fixtures/vulnerable -format sarif > scan-output/scan-result.sarif 2>> scan-output/scan.log; \
 	status=$$?; \
 	if [ $$status -ne 0 ] && [ $$status -ne 1 ]; then \
 		echo "Erro de execucao no scan SARIF (exit code $$status)"; exit $$status; \

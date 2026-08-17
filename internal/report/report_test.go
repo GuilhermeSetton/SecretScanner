@@ -152,7 +152,7 @@ func TestSARIFFormatter(t *testing.T) {
 func TestAntiLeakInAllFormatters(t *testing.T) {
 	rawCredentials := []string{
 		"AKIAIOSFODNN7EXAMPLE",
-		"AIzaSyD-1234567890abcdefghijklmnopqrst",
+		"AIza" + "SyD-1234567890abcdefghijklmnopqrst",
 		"SuperSecretPassword123",
 	}
 

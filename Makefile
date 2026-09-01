@@ -3,7 +3,7 @@
 
 SHELL := /bin/bash
 BIN_DIR ?= bin
-VERSION ?= 1.0.0
+VERSION ?= 0.1.0
 GIT_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(GIT_COMMIT)
 

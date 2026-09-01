@@ -1,0 +1,15 @@
+services:
+  quickstart:
+    image: secretscanner-k8s-quickstart:local
+    build:
+      context: .
+      dockerfile: Dockerfile.quickstart
+    volumes:
+      - .:/workspace
+
+  demo:
+    image: ghcr.io/charmbracelet/vhs:v0.11.0
+    working_dir: /vhs
+    volumes:
+      - .:/vhs
+    command: ["demo/demo.tape"]

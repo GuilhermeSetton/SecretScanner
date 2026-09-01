@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "secretscanner-report-generator"
-version = "1.0.0"
+version = "0.1.0"
 description = "Interpreter and HTML/JSON report generator for SecretScanner-K8s scan results"
 readme = "README.md"
 requires-python = ">=3.10"

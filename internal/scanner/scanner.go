@@ -18,7 +18,7 @@ import (
 
 const (
 	CurrentSchemaVersion = "1.0"
-	ScannerVersion       = "1.0.0"
+	ScannerVersion       = "0.1.0"
 	DefaultMaxFileSize   = 5 * 1024 * 1024 // 5 MB
 	MinWorkers           = 1
 	MaxWorkers           = 128

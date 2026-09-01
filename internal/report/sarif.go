@@ -182,7 +182,7 @@ func (f *SARIFFormatter) Format(w io.Writer, report *scanner.ScanReport) error {
 				Tool: SARIFTool{
 					Driver: SARIFDriver{
 						Name:           "SecretScanner-K8s",
-						Version:        "1.0.0",
+						Version:        scanner.ScannerVersion,
 						InformationURI: "https://github.com/secretscanner/secretscanner-k8s",
 						Rules:          ruleList,
 					},

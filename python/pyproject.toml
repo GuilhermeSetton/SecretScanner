@@ -20,6 +20,9 @@ dev = [
 [project.scripts]
 report-generator = "report_generator.cli:main"
 
+[tool.setuptools.package-data]
+report_generator = ["templates/*.j2"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

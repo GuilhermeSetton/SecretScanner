@@ -21,15 +21,24 @@ var (
 // EntropyDetector evaluates high-entropy strings in sensitive contexts using Shannon entropy.
 type EntropyDetector struct {
 	threshold float64
+	allowlist []*regexp.Regexp
 }
 
 // NewEntropyDetector creates a Shannon entropy detector with a configurable threshold.
 func NewEntropyDetector(threshold float64) *EntropyDetector {
+	return NewEntropyDetectorWithAllowlist(threshold, nil)
+}
+
+// NewEntropyDetectorWithAllowlist creates a Shannon entropy detector that also
+// skips tokens matching any of the user-supplied regular expressions.
+// Invalid patterns are discarded; the CLI validates them before this point.
+func NewEntropyDetectorWithAllowlist(threshold float64, allowlist []string) *EntropyDetector {
 	if threshold <= 0 {
 		threshold = 4.5
 	}
 	return &EntropyDetector{
 		threshold: threshold,
+		allowlist: compileAllowlist(allowlist),
 	}
 }
 
@@ -41,6 +50,13 @@ func (d *EntropyDetector) Detect(value string, scanContext ScanContext) []Match 
 		return matches
 	}
 
+	// Shapes that are dense but never hold a credential -- public key material,
+	// unresolved templates, password hashes, data URIs -- are ruled out on the
+	// whole value first, because tokenization would break them apart.
+	if isNonSecretValue(value) {
+		return matches
+	}
+
 	tokens := extractTokens(value)
 	for _, token := range tokens {
 		if len(token.text) < 16 {
@@ -48,6 +64,14 @@ func (d *EntropyDetector) Detect(value string, scanContext ScanContext) []Match 
 		}
 
 		if shouldSuppressEntropy(token.text) {
+			continue
+		}
+
+		if isKnownNonSecretToken(token.text) {
+			continue
+		}
+
+		if d.isAllowlisted(token.text) {
 			continue
 		}
 
@@ -133,6 +157,15 @@ func isSensitiveContext(scanContext ScanContext) bool {
 	}
 	for _, nearbyKey := range scanContext.NearbyKeys {
 		if sensitiveKeyRegex.MatchString(nearbyKey) {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *EntropyDetector) isAllowlisted(token string) bool {
+	for _, re := range d.allowlist {
+		if re.MatchString(token) {
 			return true
 		}
 	}

@@ -1,0 +1,82 @@
+{
+  "schema_version": "1.0",
+  "summary": {
+    "files_scanned": 2,
+    "findings": 5,
+    "errors": 0,
+    "critical": 3,
+    "high": 1,
+    "medium": 1,
+    "low": 0,
+    "duration_ms": 18,
+    "scanner_version": "0.1.0"
+  },
+  "findings": [
+    {
+      "rule_id": "internal.sensitive-env-var",
+      "description": "Hardcoded sensitive credential in environment variable",
+      "severity": "high",
+      "confidence": "high",
+      "file": "examples/vulnerable/payment-api.yaml",
+      "line": 22,
+      "column": 22,
+      "field_path": "spec.template.spec.containers[0].env[0].value",
+      "resource": "payment-api",
+      "kind": "Deployment",
+      "match": "Supe**************d123"
+    },
+    {
+      "rule_id": "internal.aws-access-key-id",
+      "description": "AWS Access Key ID exposed",
+      "severity": "critical",
+      "confidence": "high",
+      "file": "examples/vulnerable/payment-api.yaml",
+      "line": 25,
+      "column": 22,
+      "field_path": "spec.template.spec.containers[0].env[1].value",
+      "resource": "payment-api",
+      "kind": "Deployment",
+      "match": "AKIA************MPLE"
+    },
+    {
+      "rule_id": "internal.jwt-token",
+      "description": "JSON Web Token (JWT) exposed",
+      "severity": "critical",
+      "confidence": "high",
+      "file": "examples/vulnerable/payment-api.yaml",
+      "line": 28,
+      "column": 22,
+      "field_path": "spec.template.spec.containers[0].env[2].value",
+      "resource": "payment-api",
+      "kind": "Deployment",
+      "match": "eyJh********************************sw5c"
+    },
+    {
+      "rule_id": "internal.aws-secret-access-key",
+      "description": "AWS Secret Access Key exposed in sensitive context",
+      "severity": "critical",
+      "confidence": "high",
+      "file": "examples/vulnerable/cloud-credentials.yaml",
+      "line": 9,
+      "column": 26,
+      "field_path": "data.aws_secret_access_key",
+      "resource": "cloud-api-credentials",
+      "kind": "Secret",
+      "match": "wJal********************************EKEY"
+    },
+    {
+      "rule_id": "internal.shannon-entropy",
+      "description": "High-entropy string detected in sensitive context",
+      "severity": "medium",
+      "confidence": "medium",
+      "file": "examples/vulnerable/cloud-credentials.yaml",
+      "line": 12,
+      "column": 19,
+      "field_path": "stringData.google_api_key",
+      "resource": "cloud-api-credentials",
+      "kind": "Secret",
+      "match": "AIza**********************************2345"
+    }
+  ],
+  "errors": []
+}

@@ -149,6 +149,14 @@ expressão regular. A flag pode ser repetida:
 secretscanner -dir ./manifests -entropy-allow '^registry\.internal/' -entropy-allow '^build-id-'
 ```
 
+### Tipografia e assets do relatório
+
+O relatório HTML embute duas tipografias como base64 WOFF2 — [Archivo Narrow](https://github.com/Omnibus-Type/Archivo)
+e [Sometype Mono](https://github.com/googlefonts/sometype-mono), ambas SIL OFL 1.1, com as licenças incluídas em
+`python/report_generator/fonts/` — além de duas texturas de papel. Nada é buscado em tempo de execução: o relatório
+renderiza igual offline, dentro de um visualizador de artefato de CI e no GitHub Pages. O sistema visual está
+documentado em [DESIGN.md](DESIGN.md).
+
 ---
 
 ## Garantias de segurança e anti-leak

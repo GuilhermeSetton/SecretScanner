@@ -148,6 +148,14 @@ expression. The flag is repeatable:
 secretscanner -dir ./manifests -entropy-allow '^registry\.internal/' -entropy-allow '^build-id-'
 ```
 
+### Report typography and assets
+
+The HTML report embeds two typefaces as base64 WOFF2 — [Archivo Narrow](https://github.com/Omnibus-Type/Archivo)
+and [Sometype Mono](https://github.com/googlefonts/sometype-mono), both SIL OFL 1.1, licences included under
+`python/report_generator/fonts/` — plus two small paper textures. Nothing is fetched at runtime: the report
+renders identically offline, inside a CI artifact viewer and on GitHub Pages. The visual system is documented in
+[DESIGN.md](DESIGN.md).
+
 ---
 
 ## Security and Anti-Leak Guarantees

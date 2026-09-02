@@ -80,8 +80,12 @@ def test_html_report_xss_escaping():
 
     html = generate_html_report(report)
 
-    # Ensure raw unescaped script and HTML injection tags are NOT present
-    assert "<script>" not in html
+    # The report ships one inline script of its own (progressive enhancement),
+    # so "no <script> anywhere" is no longer the property to assert. What must
+    # hold is that the data contributes no markup: exactly one script tag, the
+    # template's, and every injected payload rendered as text.
+    assert html.count("<script") == 1
+    assert "<script>alert(" not in html
     assert "<img src=x" not in html
     assert "<svg onload=" not in html
     assert "<iframe" not in html

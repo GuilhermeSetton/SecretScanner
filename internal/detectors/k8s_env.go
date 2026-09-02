@@ -39,6 +39,13 @@ func (d *K8sEnvDetector) Detect(value string, scanContext ScanContext) []Match {
 		return matches
 	}
 
+	// An unresolved template or an obvious placeholder is a slot for a
+	// credential, not a credential. Reporting it trains users to ignore the
+	// rule that catches the real value once it is filled in.
+	if isTemplateExpression(trimmedVal) || placeholderWordRegex.MatchString(trimmedVal) {
+		return matches
+	}
+
 	// Check if the variable name matches a sensitive credential keyword
 	if sensitiveEnvNameRegex.MatchString(scanContext.KeyName) {
 		matches = append(matches, Match{

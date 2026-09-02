@@ -1,41 +1,63 @@
 # SecretScanner-K8s
 
-SecretScanner-K8s é uma ferramenta de segurança e conformidade para detecção estática e dinâmica de credenciais expostas, chaves de API e tokens sensíveis em manifestos Kubernetes.
+[English](README.md) | [Português (Brasil)](README.pt-BR.md)
 
-O projeto é estruturado em quatro pilares integrados:
-- **Go**: detecta segredos e decide severidades (`critical`, `high`, `medium`, `low`).
-- **Python**: interpreta o contrato JSON v1.0 e apresenta relatórios visuais HTML estáticos e resumos estruturados.
-- **GitHub Actions**: integra à esteira de CI/CD e publica diagnósticos SARIF no GitHub Code Scanning.
-- **Kubernetes**: aplica a política de admissão no cluster e bloqueia o deployment de manifestos vulneráveis.
+[![CI](https://github.com/GuilhermeSetton/SecretScanner/actions/workflows/test.yml/badge.svg)](https://github.com/GuilhermeSetton/SecretScanner/actions/workflows/test.yml)
+[![Security Scan](https://github.com/GuilhermeSetton/SecretScanner/actions/workflows/security-scan.yml/badge.svg)](https://github.com/GuilhermeSetton/SecretScanner/actions/workflows/security-scan.yml)
+[![Example Report](https://github.com/GuilhermeSetton/SecretScanner/actions/workflows/pages.yml/badge.svg)](https://guilhermesetton.github.io/SecretScanner/)
+[![License](https://img.shields.io/github/license/GuilhermeSetton/SecretScanner)](LICENSE)
+
+**Stop exposed credentials before a Kubernetes manifest reaches Git, CI, or your cluster.**
+
+Kubernetes manifests often carry API keys, access tokens, passwords, and encoded secrets alongside ordinary configuration. One leaked value can be copied into Git history, exposed in CI logs, or deployed before a reviewer notices it.
+
+SecretScanner-K8s helps developers, platform teams, and security teams catch those credentials before deployment. It scans YAML manifests locally or in CI, masks every reported value, assigns a severity, and can block vulnerable workloads through a Kubernetes admission webhook.
+
+- Detects AWS and Google Cloud keys, private SSH keys, JWTs, sensitive environment variables, and suspicious high-entropy strings.
+- Produces text, JSON, SARIF, and self-contained HTML reports without exposing the detected value.
+- Fits local development, GitHub Code Scanning, and admission-time enforcement.
+
+<p align="center">
+  <img src="docs/demo.gif" alt="SecretScanner-K8s finds five masked credentials in vulnerable Kubernetes manifests" width="900">
+</p>
+
+One command. Five findings. Every detected value stays masked.
 
 ---
 
-## Demonstração Rápida Local
+## Quickstart
 
-Execute o fluxo completo de compilação, varredura de fixtures e geração de relatório com quatro comandos:
+Prerequisites: [Git](https://git-scm.com/) and [Docker](https://docs.docker.com/get-docker/) with Docker Compose.
+
+After cloning the repository, run one command:
 
 ```bash
-# 1. Executar testes automatizados (Go e Python)
-make test
-
-# 2. Compilar os binários estáticos locais
-make build
-
-# 3. Executar varredura nos manifestos de teste (gerando JSON e SARIF)
-make scan-fixtures
-
-# 4. Gerar relatório visual HTML autocontido
-make report
+docker compose run --build --rm quickstart
 ```
 
-O relatório HTML gerado em `scan-output/report.html` é 100% estático e autocontido (CSS inline, sem dependências de rede, com proteção contra XSS e sem vazamento de segredos).
+Starting from an empty directory:
+
+```bash
+git clone https://github.com/GuilhermeSetton/SecretScanner.git && cd SecretScanner && docker compose run --build --rm quickstart
+```
+
+The quickstart builds for your machine's architecture, scans intentionally vulnerable Kubernetes manifests, and prints masked findings. It treats the scanner's expected `1` exit code as a successful detection while preserving operational failures.
+
+Generated files:
+
+- `scan-output/quickstart-result.json`
+- `scan-output/quickstart-report.html`
+
+Both outputs contain masked matches. The HTML report is self-contained and requires no network connection to open.
+
+See the same kind of masked, self-contained output in the [published example report](https://guilhermesetton.github.io/SecretScanner/). The page is rebuilt and deployed automatically from fictional scan data on every relevant change to `main`.
 
 ---
 
-## Validação no Kubernetes (Kind / Minikube)
+## Kubernetes Validation (Kind / Minikube)
 
 ```bash
-# 1. Gerar certificados TLS e aplicar manifests do Admission Webhook
+# 1. Generate TLS certificates and apply the admission webhook manifests
 make certs
 kubectl apply -f deploy/00-namespace.yaml
 kubectl apply -f deploy/01-serviceaccount.yaml
@@ -44,25 +66,26 @@ kubectl apply -f deploy/03-deployment.yaml
 kubectl apply -f deploy/04-service.yaml
 kubectl apply -f deploy/05-validatingwebhook.yaml
 
-# 2. Testar bloqueio de manifesto vulnerável
+# 2. Verify that a vulnerable manifest is blocked
 kubectl apply -f examples/vulnerable/deployment.yaml
-# Resultado no kubectl: Error from server (Forbidden): admission webhook "validate.secretscanner.k8s" denied the request
+# kubectl result: Error from server (Forbidden): admission webhook "validate.secretscanner.k8s" denied the request
 
-# 3. Testar admissão de manifesto seguro
+# 3. Verify that a safe manifest is admitted
 kubectl apply -f examples/clean/deployment.yaml
-# Resultado no kubectl: deployment.apps/order-service created
+# kubectl result: deployment.apps/order-service created
 ```
 
-### Protocolo de Admissão e Respostas do Webhook:
-- **Camada de Transporte HTTP**: A requisição do Kubernetes API Server para o endpoint `/validate` retorna sempre **HTTP 200 OK**.
-- **Envelope de Decisão (`AdmissionResponse`)**:
-  - Em caso de bloqueio: `response.allowed: false` e `response.status.code: 403` (Forbidden).
-  - Em caso de aceite: `response.allowed: true`.
-- **Cliente (`kubectl`)**: Observa a mensagem de recusa formal `Error from server (Forbidden)` sem qualquer exposição de segredos nos logs.
+### Admission protocol and webhook responses
+
+- **HTTP transport**: The Kubernetes API Server request to `/validate` always receives **HTTP 200 OK**.
+- **Decision envelope (`AdmissionResponse`)**:
+  - Blocked workload: `response.allowed: false` and `response.status.code: 403` (Forbidden).
+  - Accepted workload: `response.allowed: true`.
+- **Client (`kubectl`)**: Displays the formal `Error from server (Forbidden)` rejection without exposing credentials in logs.
 
 ---
 
-## Arquitetura e Contrato de Dados
+## Architecture and Data Contract
 
 ```
                       +-----------------------------+
@@ -97,37 +120,38 @@ kubectl apply -f examples/clean/deployment.yaml
 
 ---
 
-## Detecção e Regras Nativas
+## Built-in Detection Rules
 
-| Regra ID | Descrição | Severidade Padrão | Confiança |
+| Rule ID | Description | Default Severity | Confidence |
 | :--- | :--- | :--- | :--- |
 | `internal.aws-access-key-id` | AWS Access Key ID (`AKIA...`) | Critical | High |
-| `internal.aws-secret-access-key` | AWS Secret Access Key em contexto sensível | Critical | High |
+| `internal.aws-secret-access-key` | AWS Secret Access Key in a sensitive context | Critical | High |
 | `internal.google-api-key` | Google Cloud API Key (`AIza...`) | Critical | High |
-| `internal.ssh-private-key` | Cabeçalhos de chave privada OpenSSH / RSA | Critical | High |
-| `internal.jwt-token` | JSON Web Tokens codificados em Base64 | Critical | High |
-| `internal.sensitive-env-var` | Chaves sensíveis (`PASSWORD`, `TOKEN`) em plain env | High | High |
-| `internal.shannon-entropy` | Strings de alta entropia (Shannon $H \ge 4.5$) | Medium | Medium |
+| `internal.ssh-private-key` | OpenSSH / RSA private key headers | Critical | High |
+| `internal.jwt-token` | Base64-encoded JSON Web Tokens | Critical | High |
+| `internal.sensitive-env-var` | Sensitive names (`PASSWORD`, `TOKEN`) in plain environment variables | High | High |
+| `internal.shannon-entropy` | High-entropy strings (Shannon $H \ge 4.5$) | Medium | Medium |
 
 ---
 
-## Garantia de Segurança e Anti-Leak
+## Security and Anti-Leak Guarantees
 
-- **Mascaramento Proativo**: Todos os findings produzidos pelos detectores e cobertos pelos testes são mascarados antes de serem serializados ou exibidos (`AKIA************MPLE`).
-- **Isolamento de Memória**: O scanner processa manifests e campos `Secret.data` exclusivamente em memória, sem persistir segredos descriptografados em arquivos temporários de disco.
-- **Privilégios Mínimos**: O webhook de admissão não consulta nem lê segredos existentes no etcd do cluster.
-- Detalhes completos sobre o Threat Model STRIDE estão documentados em [SECURITY.md](SECURITY.md).
-
----
-
-## Maturidade do Projeto e Publicação
-
-O projeto está pronto para publicação no GitHub, demonstração técnica e validação em ambiente local ou de homologação. A adoção em produção ainda requer testes operacionais contínuos, revisão da infraestrutura de certificados TLS (ex: cert-manager), calibração de `failurePolicy`, observabilidade e validação em um cluster controlado.
-
-Release inicial: `v0.1.0`.
+- **Proactive masking**: Every tested finding is masked before serialization or display (`AKIA************MPLE`).
+- **Memory isolation**: The scanner processes manifests and `Secret.data` fields in memory without persisting decoded credentials to temporary disk files.
+- **Least privilege**: The admission webhook does not query or read existing secrets from cluster etcd.
+- **Self-scanning CI**: The project scans every YAML file in its own repository and fails on findings outside explicitly vulnerable test fixtures.
+- The complete STRIDE threat model is documented in [SECURITY.md](SECURITY.md).
 
 ---
 
-## Licença
+## Project Maturity
 
-Distribuído sob licença Apache 2.0. Consulte [LICENSE](LICENSE) para obter mais informações.
+The project is ready for GitHub publication, technical demonstrations, and validation in local or staging environments. Production adoption still requires ongoing operational testing, TLS certificate infrastructure review (for example, cert-manager), `failurePolicy` calibration, observability, and validation in a controlled cluster.
+
+Initial release: `v0.1.0`.
+
+---
+
+## License
+
+Distributed under the Apache 2.0 License. See [LICENSE](LICENSE) for details.

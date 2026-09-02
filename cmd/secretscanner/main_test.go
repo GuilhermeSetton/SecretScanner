@@ -261,3 +261,59 @@ metadata:
 		t.Errorf("expected 1 error entry in JSON errors list, got %d", len(jsonRep.Errors))
 	}
 }
+
+func TestCLI_EntropyAllowFlag(t *testing.T) {
+	tempDir := t.TempDir()
+
+	manifest := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: allowlist-demo
+stringData:
+  db_password: "Zx9Kq2LmVn4PrTuWy7BcDf1GhJk3MnQs5TvXz8AbCe6DgHi0JlNo"
+`
+	if err := os.WriteFile(filepath.Join(tempDir, "secret.yaml"), []byte(manifest), 0600); err != nil {
+		t.Fatalf("failed to write manifest: %v", err)
+	}
+
+	findingsFor := func(t *testing.T, args []string) float64 {
+		t.Helper()
+		var stdout, stderr bytes.Buffer
+		runWithIO(args, &stdout, &stderr)
+
+		var parsed map[string]any
+		if err := json.Unmarshal(stdout.Bytes(), &parsed); err != nil {
+			t.Fatalf("failed to parse JSON report: %v (stderr: %s)", err, stderr.String())
+		}
+		summary, ok := parsed["summary"].(map[string]any)
+		if !ok {
+			t.Fatal("report has no summary object")
+		}
+		count, ok := summary["findings"].(float64)
+		if !ok {
+			t.Fatal("summary has no findings count")
+		}
+		return count
+	}
+
+	baseArgs := []string{"-dir", tempDir, "-format", "json"}
+	if got := findingsFor(t, baseArgs); got == 0 {
+		t.Fatal("expected the value to be reported without -entropy-allow")
+	}
+
+	allowArgs := append(append([]string{}, baseArgs...), "-entropy-allow", `^Zx9Kq2`)
+	if got := findingsFor(t, allowArgs); got != 0 {
+		t.Errorf("expected -entropy-allow to suppress the finding, got %v", got)
+	}
+
+	// An unusable pattern is a configuration error, not a silently ignored flag.
+	var stdout, stderr bytes.Buffer
+	code := runWithIO([]string{"-dir", tempDir, "-entropy-allow", "["}, &stdout, &stderr)
+	if code != 2 {
+		t.Errorf("expected exit code 2 for an invalid pattern, got %d", code)
+	}
+	if !strings.Contains(stderr.String(), "entropy-allow") {
+		t.Errorf("expected the error message to name the flag, got %q", stderr.String())
+	}
+}

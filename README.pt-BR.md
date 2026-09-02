@@ -132,6 +132,31 @@ kubectl apply -f examples/clean/deployment.yaml
 | `internal.sensitive-env-var` | Nomes sensíveis (`PASSWORD`, `TOKEN`) em variáveis de ambiente em texto puro | High | High |
 | `internal.shannon-entropy` | Strings de alta entropia (Shannon $H \ge 4.5$) | Medium | Medium |
 
+### Falsos positivos de entropia
+
+A regra de entropia é auxiliar: só roda em contextos sensíveis, e o match é descartado
+quando o valor tem uma forma que nunca guarda credencial — chaves públicas e
+certificados, referências a gerenciadores de segredo (ARNs da AWS, caminhos do Vault,
+nomes de recurso do GCP), URLs sem credencial embutida, hashes de senha `crypt(3)` e
+PHC, data URIs e templates Helm ou envsubst não resolvidos. As regras de padrão
+específico não são afetadas: uma credencial real encontrada dentro de uma dessas formas
+continua sendo reportada pela regra própria.
+
+Para silenciar valores específicos dos seus manifestos, use `-entropy-allow` com uma
+expressão regular. A flag pode ser repetida:
+
+```bash
+secretscanner -dir ./manifests -entropy-allow '^registry\.internal/' -entropy-allow '^build-id-'
+```
+
+### Tipografia e assets do relatório
+
+O relatório HTML embute duas tipografias como base64 WOFF2 — [Archivo Narrow](https://github.com/Omnibus-Type/Archivo)
+e [Sometype Mono](https://github.com/googlefonts/sometype-mono), ambas SIL OFL 1.1, com as licenças incluídas em
+`python/report_generator/fonts/` — além de duas texturas de papel. Nada é buscado em tempo de execução: o relatório
+renderiza igual offline, dentro de um visualizador de artefato de CI e no GitHub Pages. O sistema visual está
+documentado em [DESIGN.md](DESIGN.md).
+
 ---
 
 ## Garantias de segurança e anti-leak

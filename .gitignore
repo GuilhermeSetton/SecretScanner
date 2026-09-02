@@ -30,3 +30,9 @@ Thumbs.db
 .idea/
 *.swp
 *~
+
+# Impeccable design-skill working files: comps, region diffs and review
+# captures. The built world is recorded in DESIGN.md; these are 20+ MB of
+# intermediates that do not belong in the repository.
+.impeccable/
+assets/plates/

@@ -1,0 +1,53 @@
+# Near-miss fixture: every value below sits in a sensitive field and is dense
+# enough to cross the default Shannon entropy threshold of 4.5, yet none of them
+# is a credential. A scan of this directory must report zero findings and zero
+# errors -- the repository self-scan in CI enforces that.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: near-miss-public-material
+  namespace: default
+type: Opaque
+stringData:
+  ssh-publickey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC7vbqajDhA8LMbbBHkzsLiOoBoDbTxRbAM4jTvOl8vHRPZ9OZzDsGrEGKrxWFOB3vGrMhkyJ4mE3EiOQ8bTvKxpDlWZfEQ deploy@ci"
+  jwt-signing-public-key: |
+    -----BEGIN PUBLIC KEY-----
+    MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqR9tX2vLpZ8mKcN3wTfBhYuJrNfDkV
+    hCiBoAeUlSpMdTgFqWnXyZbErKtLvPjOaHsQdCmBnVxZgYuFtIeRwLkJpNoQaSdFgH
+    -----END PUBLIC KEY-----
+  password_hash: "$2y$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: near-miss-references
+  namespace: default
+data:
+  oauth_token_endpoint: "https://sts.googleapis.com/v1/token?audience=projects/123456789/locations/global"
+  aws_secret_arn: "arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/db-AbCdEf"
+  gcp_secret_name: "projects/847362519204/secrets/payments-db-password/versions/17"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: near-miss-workload
+  namespace: default
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: near-miss-workload
+    spec:
+      containers:
+        - name: api
+          image: registry.example.com/team/api:1.4.2
+          env:
+            - name: TLS_CA_BUNDLE_KEY
+              value: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURkekNDQWwrZ0F3SUJBZ0lFYkdWMGMwVnVZM0o1Y0hRd0RRWUpLb1pJaHZjTkFRRUxCUUF3VFRFTE1Ba0cKQTFVRUJoTUNWVk14RmpBVUJnTlZCQW9URFV4bGRDZHpJRVZ1WTNKNWNIUXhKakFrQmdOVkJBTVRIVXhsZENkegpJRVZ1WTNKNWNIUWdRWFYwYUc5eWFYUjVJRmd6TUI0WERUSTJNREV3TVRBd01EQXdNRm9YRFRJM01ERXdNVEF3Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+            - name: DATABASE_PASSWORD_TEMPLATE
+              value: "{{ .Values.postgresql.auth.existingSecretPasswordKey }}"
+            - name: API_TOKEN_PLACEHOLDER
+              value: "CHANGEME-BEFORE-DEPLOY-0123456789"
+            - name: SIGNING_KEY_URI
+              value: "azurekeyvault://payments-prod.vault.azure.net/keys/signing-key/9f4c2b8a"

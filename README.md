@@ -132,6 +132,30 @@ kubectl apply -f examples/clean/deployment.yaml
 | `internal.sensitive-env-var` | Sensitive names (`PASSWORD`, `TOKEN`) in plain environment variables | High | High |
 | `internal.shannon-entropy` | High-entropy strings (Shannon $H \ge 4.5$) | Medium | Medium |
 
+### Entropy false positives
+
+The entropy rule is auxiliary: it runs only in sensitive contexts, and a match is
+discarded when the value has a shape that never holds a credential — public keys and
+certificates, secret-manager references (AWS ARNs, Vault paths, GCP resource names),
+URLs without embedded credentials, `crypt(3)` and PHC password hashes, data URIs, and
+unresolved Helm or envsubst templates. Specific pattern rules are unaffected, so a real
+credential found inside one of those shapes is still reported by its own rule.
+
+To silence values specific to your manifests, pass `-entropy-allow` with a regular
+expression. The flag is repeatable:
+
+```bash
+secretscanner -dir ./manifests -entropy-allow '^registry\.internal/' -entropy-allow '^build-id-'
+```
+
+### Report typography and assets
+
+The HTML report embeds two typefaces as base64 WOFF2 — [Archivo Narrow](https://github.com/Omnibus-Type/Archivo)
+and [Sometype Mono](https://github.com/googlefonts/sometype-mono), both SIL OFL 1.1, licences included under
+`python/report_generator/fonts/` — plus two small paper textures. Nothing is fetched at runtime: the report
+renders identically offline, inside a CI artifact viewer and on GitHub Pages. The visual system is documented in
+[DESIGN.md](DESIGN.md).
+
 ---
 
 ## Security and Anti-Leak Guarantees

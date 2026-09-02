@@ -71,6 +71,13 @@ def test_reject_invalid_schema_version():
         validate_scan_report(payload)
 
 
+def test_reject_unsupported_schema_version():
+    payload = valid_sample_payload()
+    payload["schema_version"] = "2.0"
+    with pytest.raises(ValidationError, match="Unsupported schema_version"):
+        validate_scan_report(payload)
+
+
 def test_reject_missing_summary_keys():
     payload = valid_sample_payload()
     del payload["summary"]["critical"]

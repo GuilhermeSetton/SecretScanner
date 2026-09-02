@@ -9,6 +9,7 @@ MAX_INPUT_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB limit
 ALLOWED_SEVERITIES = {"critical", "high", "medium", "low"}
 ALLOWED_CONFIDENCES = {"critical", "high", "medium", "low"}
 SCHEMA_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+$")
+CURRENT_SCHEMA_VERSION = "1.0"
 
 
 ALLOWED_ROOT_KEYS = {"schema_version", "summary", "findings", "errors"}
@@ -64,6 +65,10 @@ def validate_scan_report(data: Any) -> ScanReport:
     schema_ver = data["schema_version"]
     if not isinstance(schema_ver, str) or not SCHEMA_VERSION_PATTERN.match(schema_ver):
         raise ValidationError(f"Invalid schema_version '{schema_ver}', expected string format like '1.0'")
+    if schema_ver != CURRENT_SCHEMA_VERSION:
+        raise ValidationError(
+            f"Unsupported schema_version '{schema_ver}', supported version is '{CURRENT_SCHEMA_VERSION}'"
+        )
 
     # Validate summary
     summary_data = data["summary"]

@@ -4,6 +4,9 @@ package report
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -11,6 +14,42 @@ import (
 	"github.com/secretscanner/secretscanner-k8s/internal/scanner"
 	"github.com/secretscanner/secretscanner-k8s/pkg/rules"
 )
+
+func TestJSONFormatterRejectsUnsupportedSchemaVersion(t *testing.T) {
+	formatter := &JSONFormatter{}
+	report := &scanner.ScanReport{SchemaVersion: "2.0"}
+
+	if err := formatter.Format(&bytes.Buffer{}, report); err == nil {
+		t.Fatal("expected unsupported schema version to be rejected")
+	}
+}
+
+func TestJSONSchemaVersionMatchesScanner(t *testing.T) {
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("could not locate test file")
+	}
+
+	schemaPath := filepath.Join(filepath.Dir(filename), "..", "..", "docs", "schema", "scan-result-v1.json")
+	data, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("read schema: %v", err)
+	}
+
+	var document struct {
+		Properties struct {
+			SchemaVersion struct {
+				Const string `json:"const"`
+			} `json:"schema_version"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(data, &document); err != nil {
+		t.Fatalf("parse schema: %v", err)
+	}
+	if document.Properties.SchemaVersion.Const != scanner.CurrentSchemaVersion {
+		t.Fatalf("schema version = %q, scanner version = %q", document.Properties.SchemaVersion.Const, scanner.CurrentSchemaVersion)
+	}
+}
 
 func sampleReport() *scanner.ScanReport {
 	return &scanner.ScanReport{

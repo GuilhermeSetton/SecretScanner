@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/secretscanner/secretscanner-k8s/main/docs/schema/scan-result-v1.json",
+  "$id": "https://raw.githubusercontent.com/GuilhermeSetton/SecretScanner/main/docs/schema/scan-result-v1.json",
   "title": "SecretScannerScanResult",
   "description": "Standard output contract produced by SecretScanner-K8s in Go and consumed by report generators and integrations.",
   "type": "object",
@@ -14,8 +14,8 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "description": "Semantic schema version of the output structure.",
-      "pattern": "^[0-9]+\\.[0-9]+$"
+      "description": "Exact version of this JSON contract.",
+      "const": "1.0"
     },
     "summary": {
       "type": "object",

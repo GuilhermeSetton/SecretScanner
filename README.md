@@ -118,6 +118,8 @@ kubectl apply -f examples/clean/deployment.yaml
        +--------------------+
 ```
 
+The Go engine and Python reporter share the strict [JSON contract v1.0](docs/schema/README.md). Its canonical JSON Schema is versioned with the repository; producers and consumers reject unsupported contract versions instead of guessing compatibility.
+
 ---
 
 ## Built-in Detection Rules

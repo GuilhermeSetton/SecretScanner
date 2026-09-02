@@ -8,12 +8,26 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"regexp"
+	"strings"
 	"syscall"
 
 	"github.com/secretscanner/secretscanner-k8s/internal/report"
 	"github.com/secretscanner/secretscanner-k8s/internal/scanner"
 	"github.com/secretscanner/secretscanner-k8s/pkg/rules"
 )
+
+// repeatableFlag collects a flag that may be given more than once.
+type repeatableFlag []string
+
+func (f *repeatableFlag) String() string {
+	return strings.Join(*f, ",")
+}
+
+func (f *repeatableFlag) Set(value string) error {
+	*f = append(*f, value)
+	return nil
+}
 
 func main() {
 	exitCode := run(os.Args[1:])
@@ -33,6 +47,8 @@ func runWithIO(args []string, stdout io.Writer, stderr io.Writer) int {
 	rulesFile := flags.String("rules", "", "Optional path to custom YAML rules definition file")
 	workersFlag := flags.Int("workers", scanner.CalculateDefaultWorkers(), "Number of concurrent scanning workers (1-128)")
 	entropyThreshold := flags.Float64("entropy-threshold", 4.5, "Shannon entropy threshold for sensitive context string detection")
+	var entropyAllow repeatableFlag
+	flags.Var(&entropyAllow, "entropy-allow", "Regular expression for values the entropy detector must ignore (repeatable)")
 	maxFileSize := flags.Int64("max-file-size", scanner.DefaultMaxFileSize, "Maximum file size in bytes to process")
 	verbose := flags.Bool("verbose", false, "Enable verbose diagnostic logs on stderr")
 
@@ -44,6 +60,15 @@ func runWithIO(args []string, stdout io.Writer, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "Configuration error: %v\n", err)
 		return 2
+	}
+
+	// Patterns are validated here so a typo fails the scan instead of being
+	// silently dropped further down.
+	for _, pattern := range entropyAllow {
+		if _, err := regexp.Compile(pattern); err != nil {
+			fmt.Fprintf(stderr, "Invalid -entropy-allow pattern %q: %v\n", pattern, err)
+			return 2
+		}
 	}
 
 	var customRules []rules.Rule
@@ -75,6 +100,7 @@ func runWithIO(args []string, stdout io.Writer, stderr io.Writer) int {
 		Workers:          *workersFlag,
 		CustomRules:      customRules,
 		EntropyThreshold: *entropyThreshold,
+		EntropyAllowlist: entropyAllow,
 		MaxFileSize:      *maxFileSize,
 		Verbose:          *verbose,
 	}

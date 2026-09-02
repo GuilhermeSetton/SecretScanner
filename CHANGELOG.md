@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- `-entropy-allow` CLI flag (repeatable) and `ScannerOptions.EntropyAllowlist`, for
+  regular expressions describing values the entropy detector must ignore.
+- Near-miss fixture (`testdata/near-miss/`) holding dense values that are not
+  credentials; the repository self-scan fails if any of them starts being reported.
+
+### Fixed
+- Entropy matches are validated by shape before being reported. Public keys and
+  certificates (including base64-wrapped ones), secret-manager references, URLs without
+  embedded credentials, `crypt(3)` and PHC password hashes, data URIs and unresolved
+  templates no longer produce findings. Private key material inside a certificate bundle
+  is still reported.
+- The sensitive environment variable heuristic no longer reports unresolved Helm or
+  envsubst templates, nor obvious placeholders such as `CHANGEME`.
+
 ## [1.0.0] - 2026-08-17
 
 ### Added

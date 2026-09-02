@@ -627,6 +627,27 @@ func TestScanner_VulnerableFixtureTemplate(t *testing.T) {
 	}
 }
 
+func TestScanner_NearMissFixtureIsClean(t *testing.T) {
+	fixtureDir := filepath.Join("..", "..", "testdata", "near-miss")
+
+	scn := NewScanner(ScannerOptions{TargetDir: fixtureDir})
+	report, err := scn.Scan(context.Background())
+	if err != nil {
+		t.Fatalf("scan failed: %v", err)
+	}
+
+	if report.Summary.FilesScanned == 0 {
+		t.Fatal("near-miss fixture directory was not scanned")
+	}
+	if len(report.Errors) != 0 {
+		t.Fatalf("expected 0 errors, got %d: %+v", len(report.Errors), report.Errors)
+	}
+
+	for _, f := range report.Findings {
+		t.Errorf("unexpected finding %s at %s:%d (%s)", f.RuleID, f.File, f.Line, f.FieldPath)
+	}
+}
+
 func TestScanner_EntropyAllowlistOption(t *testing.T) {
 	tempDir := t.TempDir()
 

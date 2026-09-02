@@ -21,7 +21,12 @@ dev = [
 report-generator = "report_generator.cli:main"
 
 [tool.setuptools.package-data]
-report_generator = ["templates/*.j2"]
+report_generator = [
+    "templates/*.j2",
+    "fonts/*.woff2",
+    "fonts/OFL-*.txt",
+    "assets/*.png",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

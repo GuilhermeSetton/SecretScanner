@@ -626,3 +626,61 @@ func TestScanner_VulnerableFixtureTemplate(t *testing.T) {
 		t.Errorf("expected finding for internal.aws-secret-access-key in rendered fixture")
 	}
 }
+
+func TestScanner_NearMissFixtureIsClean(t *testing.T) {
+	fixtureDir := filepath.Join("..", "..", "testdata", "near-miss")
+
+	scn := NewScanner(ScannerOptions{TargetDir: fixtureDir})
+	report, err := scn.Scan(context.Background())
+	if err != nil {
+		t.Fatalf("scan failed: %v", err)
+	}
+
+	if report.Summary.FilesScanned == 0 {
+		t.Fatal("near-miss fixture directory was not scanned")
+	}
+	if len(report.Errors) != 0 {
+		t.Fatalf("expected 0 errors, got %d: %+v", len(report.Errors), report.Errors)
+	}
+
+	for _, f := range report.Findings {
+		t.Errorf("unexpected finding %s at %s:%d (%s)", f.RuleID, f.File, f.Line, f.FieldPath)
+	}
+}
+
+func TestScanner_EntropyAllowlistOption(t *testing.T) {
+	tempDir := t.TempDir()
+
+	manifest := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: allowlist-demo
+stringData:
+  db_password: "Zx9Kq2LmVn4PrTuWy7BcDf1GhJk3MnQs5TvXz8AbCe6DgHi0JlNo"
+`
+	if err := os.WriteFile(filepath.Join(tempDir, "secret.yaml"), []byte(manifest), 0600); err != nil {
+		t.Fatalf("failed to write manifest: %v", err)
+	}
+
+	baseline := NewScanner(ScannerOptions{TargetDir: tempDir})
+	baseReport, err := baseline.Scan(context.Background())
+	if err != nil {
+		t.Fatalf("baseline scan failed: %v", err)
+	}
+	if len(baseReport.Findings) == 0 {
+		t.Fatal("expected the value to be reported without an allowlist")
+	}
+
+	allowlisted := NewScanner(ScannerOptions{
+		TargetDir:        tempDir,
+		EntropyAllowlist: []string{`^Zx9Kq2`},
+	})
+	allowReport, err := allowlisted.Scan(context.Background())
+	if err != nil {
+		t.Fatalf("allowlisted scan failed: %v", err)
+	}
+	if len(allowReport.Findings) != 0 {
+		t.Errorf("expected the allowlist to suppress the finding, got %d", len(allowReport.Findings))
+	}
+}

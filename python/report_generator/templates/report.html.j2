@@ -3,345 +3,834 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SecretScanner-K8s Security Report</title>
+  <title>SecretScanner-K8s Report</title>
   <style>
+    /* Embedded faces: the report is one self-contained file that must render
+       identically offline and inside a CI artifact viewer, so nothing is
+       fetched at runtime. Archivo Narrow and Sometype Mono are SIL OFL 1.1;
+       their licences ship in the package under report_generator/fonts/. */
+    @font-face {
+      font-family: 'Archivo Narrow Embedded';
+      src: url({{ assets.archivo_narrow }}) format('woff2');
+      font-weight: 400 700;
+      font-style: normal;
+      font-display: block;
+    }
+    @font-face {
+      font-family: 'Sometype Mono Embedded';
+      src: url({{ assets.sometype_mono }}) format('woff2');
+      font-weight: 400 700;
+      font-style: normal;
+      font-display: block;
+    }
+
     :root {
-      --bg-primary: #0f172a;
-      --bg-secondary: #1e293b;
-      --bg-card: #1e293b;
-      --text-primary: #f8fafc;
-      --text-secondary: #94a3b8;
-      --border-color: #334155;
-      --critical: #ef4444;
-      --high: #f97316;
-      --medium: #eab308;
-      --low: #3b82f6;
-      --success: #10b981;
-      --code-bg: #0f172a;
+      color-scheme: light dark;
+
+      --paper: #e9e5d6;
+      /* assets/plates/paper-ground.png — the sheet's grain, sampled from the
+         approved comp and inlined here as a data URI so the report stays one
+         file. See report_generator/assets/paper-ground.png. */
+      --paper-tile: url({{ assets.paper_ground }});
+      /* assets/plates/stamp-ink.png — the dry-pad breakup the status stamp
+         prints with, from the same sheet patch. */
+      --stamp-ink: url({{ assets.stamp_ink }});
+      --grid-fine: rgba(143, 168, 145, 0.30);
+      --grid-coarse: rgba(143, 168, 145, 0.58);
+      --rule: rgba(38, 41, 43, 0.42);
+      --rule-strong: rgba(38, 41, 43, 0.72);
+      --ink: #26292b;
+      --ink-soft: #5d5b50;
+      --ink-faint: #8a857d;
+      --row-tint: rgba(38, 41, 43, 0.035);
+
+      --critical: #a8291d;
+      --high: #a2600f;
+      --medium: #7d6310;
+      --low: #3d647f;
+      --clear: #3f6b45;
+
+      --face-label: 'Archivo Narrow Embedded', ui-sans-serif, system-ui, sans-serif;
+      --face-data: 'Sometype Mono Embedded', ui-monospace, SFMono-Regular, Consolas, monospace;
+
+      --sheet-max: 1586px;
+      --pad: clamp(0.5rem, 0.9vw, 1rem);
     }
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+
+    @media (prefers-color-scheme: dark) {
+      /* The same sheet under a bench lamp: the paper goes to graphite, the
+         printed grid survives as a faint phosphor, the pen stays legible. */
+      :root {
+        --paper: #22231f;
+        --grid-fine: rgba(143, 168, 145, 0.16);
+        --grid-coarse: rgba(143, 168, 145, 0.30);
+        --rule: rgba(233, 229, 214, 0.34);
+        --rule-strong: rgba(233, 229, 214, 0.62);
+        --ink: #e9e5d6;
+        --ink-soft: #a8a496;
+        --ink-faint: #7e7a6e;
+        --row-tint: rgba(233, 229, 214, 0.045);
+
+        --critical: #e8796a;
+        --high: #d79a55;
+        --medium: #c8b264;
+        --low: #8fb2cc;
+        --clear: #86b98a;
+      }
     }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body, h1, h2, p, table, figure { margin: 0; }
+
+    ::selection { background: rgba(168, 41, 29, 0.20); color: var(--ink); }
+    :focus-visible { outline: 2px solid var(--critical); outline-offset: 2px; }
+    html { scrollbar-color: var(--ink-faint) transparent; caret-color: var(--critical); }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg-primary);
-      color: var(--text-primary);
+      font-family: var(--face-data);
+      font-weight: 400;
+      font-size: 16px;
       line-height: 1.5;
-      padding: 2rem;
+      color: var(--ink);
+      background-color: var(--paper);
+      padding: var(--pad);
+      -webkit-font-smoothing: antialiased;
     }
-    .container {
-      max-width: 1200px;
+
+    /* The paper's own grain, sampled from the approved comp and tiled. It sits
+       over the whole sheet at low strength: this is the material, not a
+       pattern competing with the ink. */
+    body { position: relative; }
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: var(--paper-tile);
+      background-size: 192px 192px;
+      mix-blend-mode: multiply;
+      opacity: 0.42;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .sheet { position: relative; z-index: 1; }
+
+    @media (prefers-color-scheme: dark) {
+      body::before { mix-blend-mode: soft-light; opacity: 0.30; }
+    }
+
+    .sheet {
+      max-width: var(--sheet-max);
       margin: 0 auto;
+      border: 1px solid var(--rule-strong);
+      background: transparent;
     }
-    header {
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 1.5rem;
-      margin-bottom: 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      gap: 1rem;
-    }
-    .header-title h1 {
-      font-size: 1.875rem;
-      font-weight: 700;
-      color: #fff;
-    }
-    .header-title p {
-      color: var(--text-secondary);
-      font-size: 0.875rem;
-      margin-top: 0.25rem;
-    }
-    .status-badge {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      border-radius: 0.375rem;
-      font-weight: 700;
-      font-size: 0.875rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .status-passed { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
-    .status-failed { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
-    .status-error { background: #78350f; color: #fde68a; border: 1px solid #d97706; }
 
-    .grid-cards {
+    /* ---------- header: the ruled record form ---------- */
+
+    .sheet-head {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      border-bottom: 1px solid var(--rule-strong);
     }
-    .card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 0.5rem;
-      padding: 1.25rem;
-      text-align: center;
-    }
-    .card-label {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-    .card-value {
-      font-size: 1.75rem;
+
+    .sheet-title {
+      grid-column: 1 / -1;
+      font-family: var(--face-label);
       font-weight: 700;
-      color: #fff;
+      font-size: clamp(1.2rem, 0.9rem + 1vw, 1.6rem);
+      letter-spacing: -0.005em;
+      line-height: 1;
+      padding: 0.5rem 1rem 0.45rem;
     }
-    .val-critical { color: var(--critical); }
-    .val-high { color: var(--high); }
-    .val-medium { color: var(--medium); }
-    .val-low { color: var(--low); }
 
-    .section {
-      margin-bottom: 2.5rem;
+    .record-fields {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      border-top: 1px solid var(--rule);
     }
-    .section-title {
-      font-size: 1.25rem;
+    /* The form has eleven fields; the last one widens so no cell is left
+       hanging half-ruled at the end of a row. */
+    .field:last-child { grid-column: span 2; }
+
+    .field {
+      padding: 0.4rem 1rem 0.45rem;
+      border-right: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      min-width: 0;
+    }
+    .field:last-child { border-right: none; }
+
+    .field-caption {
+      font-family: var(--face-label);
       font-weight: 600;
-      margin-bottom: 1rem;
-      color: #fff;
-      border-left: 4px solid var(--low);
-      padding-left: 0.75rem;
+      font-size: 0.75rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--bg-card);
-      border-radius: 0.5rem;
-      overflow: hidden;
-      border: 1px solid var(--border-color);
+    .field-value {
+      font-size: 0.9375rem;
+      font-variant-numeric: tabular-nums;
+      margin-top: 0.15rem;
+      overflow-wrap: anywhere;
     }
+
+    .masking-note {
+      grid-column: 1 / -1;
+      padding: 0.4rem 1rem 0.45rem;
+      font-size: 0.9375rem;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- the status stamp ---------- */
+
+    .stamp {
+      justify-self: end;
+      align-self: start;
+      margin: 0.85rem 1.35rem 0 1rem;
+      grid-row: 1;
+      grid-column: 2;
+      transform: rotate(-2.2deg);
+      border: 4px solid currentColor;
+      border-radius: 1px;
+      padding: 0.5rem 1.3rem 0.55rem;
+      font-family: var(--face-label);
+      font-weight: 700;
+      font-size: clamp(1.15rem, 0.7rem + 1.5vw, 2.15rem);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1.08;
+      text-align: center;
+      white-space: nowrap;
+      /* A rubber stamp prints dry: the mask drops ink out of the letters and
+         the rule alike. */
+      -webkit-mask-image: var(--stamp-ink);
+      mask-image: var(--stamp-ink);
+      -webkit-mask-size: 150px 150px;
+      mask-size: 150px 150px;
+    }
+    .stamp span { display: block; }
+    .stamp { position: relative; }
+    .stamp-findings { color: var(--critical); }
+    .stamp-passed { color: var(--clear); }
+    .stamp-error { color: var(--high); }
+
+    /* ---------- the chart ---------- */
+
+    .chart-band { border-bottom: 1px solid var(--rule-strong); }
+
+    .scale-mark {
+      font-family: var(--face-label);
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: 0.1em;
+      fill: var(--ink);
+      text-anchor: end;
+    }
+    .scale-tick { stroke: var(--rule-strong); stroke-width: 1; }
+    .chart-frame { fill: none; stroke: var(--rule); stroke-width: 1; }
+
+    .chart-plot { padding: 0.5rem 1rem 0.7rem; min-width: 0; }
+    .chart-plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+    .chart-grid-fine { stroke: var(--grid-fine); stroke-width: 0.5; }
+    .chart-grid-coarse { stroke: var(--grid-coarse); stroke-width: 0.8; }
+
+    .trace {
+      fill: none;
+      stroke: var(--ink);
+      stroke-width: 1.4;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+
+    .grid-line { stroke: var(--rule); stroke-width: 0.6; stroke-dasharray: 3 5; }
+    .block-divider { stroke: var(--rule-strong); stroke-width: 1; }
+
+    .event { cursor: pointer; }
+    .event-drop { stroke: var(--rule); stroke-width: 0.8; stroke-dasharray: 2 4; }
+
+    .event-ink {
+      fill: none;
+      stroke-width: 1.9;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+    .event-ink-critical { stroke: var(--critical); }
+    .event-ink-high { stroke: var(--high); }
+    .event-ink-medium { stroke: var(--medium); }
+    .event-ink-low { stroke: var(--low); }
+    .event-mark-critical { fill: var(--critical); }
+    .event-mark-high { fill: var(--high); }
+    .event-mark-medium { fill: var(--medium); }
+    .event-mark-low { fill: var(--low); }
+
+    .event-number {
+      font-family: var(--face-label);
+      font-weight: 700;
+      font-size: 11px;
+      fill: var(--ink);
+      text-anchor: middle;
+    }
+
+    .event:hover .event-number,
+    .event:focus-visible .event-number { fill: var(--critical); }
+    .event:hover .event-halo { opacity: 1; }
+    .event-halo { fill: none; stroke: currentColor; stroke-width: 1; opacity: 0; }
+
+    /* The axis sits inside the plot's own padding box and each label is
+       positioned at its block, so a file name lands under the stretch of trace
+       it belongs to rather than under an evenly divided guess. */
+    .file-axis { position: relative; height: 2.6rem; margin-top: 0.15rem; }
+
+    .axis-file {
+      position: absolute;
+      top: 0;
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--ink);
+      padding: 0.4rem 0.4rem 0;
+      border-top: 1px solid var(--rule-strong);
+      border-left: 1px solid var(--rule);
+      border-right: 1px solid var(--rule);
+      overflow-wrap: anywhere;
+      line-height: 1.25;
+    }
+    .axis-empty { position: static; border: none; padding-top: 0.5rem; }
+
+    /* ---------- the reading ---------- */
+
+    .reading { border-bottom: 1px solid var(--rule-strong); }
+
+    .reading-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.75rem 1.25rem;
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .reading-title {
+      font-family: var(--face-label);
+      font-weight: 700;
+      font-size: 0.8125rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .filters { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-left: auto; }
+
+    .filter {
+      font-family: var(--face-label);
+      font-weight: 600;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      background: transparent;
+      border: 1px solid var(--rule);
+      border-radius: 0;
+      padding: 0.2rem 0.55rem;
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+    }
+    .filter:hover { color: var(--ink); border-color: var(--rule-strong); }
+    .filter[aria-pressed="true"] {
+      color: var(--paper);
+      background: var(--ink);
+      border-color: var(--ink);
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
     th, td {
-      padding: 0.875rem 1rem;
       text-align: left;
-      font-size: 0.875rem;
-      border-bottom: 1px solid var(--border-color);
+      padding: 0.42rem 0.7rem;
+      border-bottom: 1px solid var(--rule);
       vertical-align: top;
+      font-size: 0.875rem;
+      line-height: 1.4;
     }
+    th:first-child, td:first-child { padding-left: 1rem; }
+    th:last-child, td:last-child { padding-right: 1rem; }
+
     th {
-      background: #111827;
-      color: var(--text-secondary);
+      font-family: var(--face-label);
       font-weight: 600;
-      text-transform: uppercase;
       font-size: 0.75rem;
-      letter-spacing: 0.05em;
-    }
-    tr:last-child td {
-      border-bottom: none;
-    }
-    tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      white-space: nowrap;
+      border-bottom: 1px solid var(--rule-strong);
     }
 
-    .badge {
+    tbody tr:nth-child(even) { background: var(--row-tint); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr[hidden] { display: none; }
+
+    tbody tr.is-cited {
+      background: rgba(168, 41, 29, 0.10);
+      outline: 1px solid var(--critical);
+    }
+
+    .col-index { width: 2.75rem; }
+    .col-sev { width: 6rem; }
+    .col-rule { width: 15.5rem; }
+    .col-coordinate { width: 13.5rem; }
+    .col-field { width: 10rem; }
+    .col-value { width: 15rem; }
+
+    .cell-index { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+    .cell-rule { font-weight: 700; overflow-wrap: anywhere; }
+    .rule-critical { color: var(--critical); }
+    .rule-high { color: var(--high); }
+    .rule-medium { color: var(--medium); }
+    .rule-low { color: var(--low); }
+
+    .sev {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-family: var(--face-label);
+      font-weight: 600;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .sev svg { flex: none; }
+
+    .coordinate { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .field-path { overflow-wrap: anywhere; color: var(--ink-soft); }
+
+    .masked {
       display: inline-block;
-      padding: 0.2rem 0.5rem;
-      border-radius: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
+      border: 1px solid var(--rule);
+      padding: 0.1rem 0.4rem;
+      overflow-wrap: anywhere;
+      font-size: 0.8125rem;
+      background: rgba(38, 41, 43, 0.03);
     }
-    .badge-critical { background: #7f1d1d; color: #fca5a5; }
-    .badge-high { background: #7c2d12; color: #fdba74; }
-    .badge-medium { background: #713f12; color: #fde047; }
-    .badge-low { background: #1e3a8a; color: #93c5fd; }
 
-    code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      background: var(--code-bg);
-      border: 1px solid var(--border-color);
-      padding: 0.2rem 0.4rem;
-      border-radius: 0.25rem;
-      font-size: 0.8125rem;
-      color: #38bdf8;
-      word-break: break-all;
+    .action { color: var(--ink-soft); }
+
+    /* The sheet reads one line per finding, the way the log on a real record
+       does. The full remediation and field path are always in the markup: the
+       clamp is added by script and lifts on click, and printing ignores it. */
+    tr.is-clamped .clamp {
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
-    .remediation {
-      font-size: 0.8125rem;
-      color: #94a3b8;
-      margin-top: 0.375rem;
-      background: rgba(15, 23, 42, 0.5);
-      padding: 0.5rem;
-      border-radius: 0.25rem;
-      border-left: 3px solid #64748b;
+    .cell-rule { white-space: nowrap; }
+    tr.is-open .cell-rule { white-space: normal; }
+    tbody tr[data-severity] { cursor: pointer; }
+    tr.is-open .clamp { -webkit-line-clamp: unset; overflow: visible; }
+
+    @media print {
+      tr.is-clamped .clamp { -webkit-line-clamp: unset; overflow: visible; }
     }
-    .location-tag {
-      color: #a5b4fc;
-      font-family: ui-monospace, SFMono-Regular, monospace;
-      font-size: 0.8125rem;
-    }
-    .empty-state {
-      padding: 3rem;
+
+    .clean-sheet {
+      padding: clamp(2.5rem, 6vw, 4.5rem) 1rem;
       text-align: center;
-      color: var(--text-secondary);
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 0.5rem;
     }
-    footer {
-      border-top: 1px solid var(--border-color);
-      padding-top: 1.5rem;
-      margin-top: 3rem;
-      text-align: center;
+    .clean-sheet strong {
+      font-family: var(--face-label);
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: 0.02em;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+    .clean-sheet span { color: var(--ink-soft); font-size: 0.875rem; }
+
+    .sheet-foot {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      justify-content: space-between;
+      padding: 0.7rem 1rem;
       font-size: 0.75rem;
-      color: var(--text-secondary);
+      color: var(--ink-soft);
+    }
+    .sheet-foot a { color: inherit; text-decoration-color: var(--rule-strong); text-underline-offset: 3px; }
+    .sheet-foot a:hover { color: var(--ink); }
+
+    /* ---------- narrow sheets ---------- */
+
+    @media (max-width: 1200px) {
+      .record-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 860px) {
+      .record-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .reading table, .reading thead, .reading tbody, .reading tr, .reading td { display: block; width: 100%; }
+      .reading thead { display: none; }
+      .reading tbody tr { border-bottom: 1px solid var(--rule-strong); padding: 0.5rem 0; }
+      .reading tbody tr:last-child { border-bottom: none; }
+      .reading td { border-bottom: none; padding: 0.2rem 1rem; }
+      .reading td[data-caption]::before {
+        content: attr(data-caption);
+        display: block;
+        font-family: var(--face-label);
+        font-weight: 600;
+        font-size: 0.6875rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+      }
+      /* Coordinates hold on one line while there are columns to hold them;
+         stacked, they wrap rather than run off the sheet. */
+      .coordinate { white-space: normal; overflow-wrap: anywhere; }
+      .chart-plot { padding: 0.75rem 0.65rem 0.6rem; }
+      .axis-file { font-size: 0.75rem; padding: 0.35rem 0.25rem 0; }
+
+      /* A narrow screen scrolls the paper rather than shrinking the trace into
+         a line nobody can read. */
+      .chart-roll { overflow-x: auto; overscroll-behavior-x: contain; }
+      .chart-roll > * { min-width: 640px; }
+    }
+
+    /* ---------- the pen draws once ---------- */
+
+    @media (prefers-reduced-motion: no-preference) {
+      .trace {
+        stroke-dasharray: var(--trace-length, 4000);
+        stroke-dashoffset: var(--trace-length, 4000);
+        animation: draw 1500ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+      .event { opacity: 0; animation: ink 420ms ease-out forwards; }
+      @keyframes draw { to { stroke-dashoffset: 0; } }
+      @keyframes ink { from { opacity: 0; } to { opacity: 1; } }
+    }
+
+    @media print {
+      body { background-image: none; padding: 0; }
+      .filters { display: none; }
+      .sheet { border-color: #000; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <div class="header-title">
-        <h1>SecretScanner-K8s Report</h1>
-        <p>Scanner Version: {{ summary.scanner_version }} | Schema: v{{ schema_version }} | Duration: {{ summary.duration_ms }}ms</p>
+<!--
+THESIS: A scan is an instrument pass over the manifests, and every secret is a
+deflection the pen recorded; this sheet refuses the severity-donut dashboard.
+OWN-WORLD: Oat chart paper with a printed sage grid, graphite pen trace,
+pen-ink event colours, ruled record fields, a broken-ink status stamp, condensed
+label caps over monospaced data.
+STORY: The reader sees where the run went loud, reads the coordinates that put
+them in the file, and leaves with the value still masked.
+FIRST VIEWPORT: Title and ruled field form across the top with the stamp at the
+right, the chart band beneath it at a third of the height with its severity
+scale at the left and file axis under it, the tabular reading below the fold.
+FORM: Chart Recorder, candidate 7 of the grounded list, seed key c1005534.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the
+finish review, the verdict, and DESIGN.md
+-->
+  <main class="sheet">
+    <header class="sheet-head">
+      <h1 class="sheet-title">SecretScanner-K8s</h1>
+      {% if status == "PASSED" %}
+        <div class="stamp stamp-passed" role="status" aria-label="PASSED"><span>PASSED</span></div>
+      {% elif status == "FAILED" %}
+        <div class="stamp stamp-findings" role="status" aria-label="FINDINGS DETECTED"><span aria-hidden="true">FINDINGS</span><span aria-hidden="true">DETECTED</span></div>
+      {% else %}
+        <div class="stamp stamp-error" role="status" aria-label="SCAN ERROR"><span aria-hidden="true">SCAN</span><span aria-hidden="true">ERROR</span></div>
+      {% endif %}
+
+      <div class="record-fields">
+        <div class="field">
+          <div class="field-caption">Files scanned</div>
+          <div class="field-value">{{ summary.files_scanned }}</div>
+        </div>
+        <div class="field">
+          <div class="field-caption">Affected</div>
+          <div class="field-value">{{ affected_files_count }}</div>
+        </div>
+        <div class="field">
+          <div class="field-caption">Events</div>
+          <div class="field-value">{{ summary.findings }}</div>
+        </div>
+        <div class="field">
+          <div class="field-caption">Critical</div>
+          <div class="field-value">{{ summary.critical }}</div>
+        </div>
+        <div class="field">
+          <div class="field-caption">High</div>
+          <div class="field-value">{{ summary.high }}</div>
+        </div>
+        <div class="field">
+          <div class="field-caption">Medium</div>
+          <div class="field-value">{{ summary.medium }}</div>
+        </div>
+        <div class="field">
+          <div class="field-caption">Low</div>
+          <div class="field-value">{{ summary.low }}</div>
+        </div>
+        <div class="field">
+          <div class="field-caption">Errors</div>
+          <div class="field-value">{{ summary.errors }}</div>
+        </div>
+        <div class="field">
+          <div class="field-caption">Elapsed</div>
+          <div class="field-value">{{ summary.duration_ms }} ms</div>
+        </div>
+        <div class="field">
+          <div class="field-caption">Chart</div>
+          <div class="field-value">{{ summary.scanner_version }}</div>
+        </div>
+        <div class="field">
+          <div class="field-caption">Schema</div>
+          <div class="field-value">v{{ schema_version }}</div>
+        </div>
       </div>
-      <div>
-        {% if status == "PASSED" %}
-          <span class="status-badge status-passed">PASSED</span>
-        {% elif status == "FAILED" %}
-          <span class="status-badge status-failed">FINDINGS DETECTED</span>
-        {% else %}
-          <span class="status-badge status-error">SCAN ERROR</span>
-        {% endif %}
-      </div>
+
+      <p class="masking-note">Every reported value is masked before it reaches this sheet.</p>
     </header>
 
-    <div class="grid-cards">
-      <div class="card">
-        <div class="card-label">Files Scanned</div>
-        <div class="card-value">{{ summary.files_scanned }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Total Findings</div>
-        <div class="card-value">{{ summary.findings }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Critical</div>
-        <div class="card-value val-critical">{{ summary.critical }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">High</div>
-        <div class="card-value val-high">{{ summary.high }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Medium</div>
-        <div class="card-value val-medium">{{ summary.medium }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Low</div>
-        <div class="card-value val-low">{{ summary.low }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Scan Errors</div>
-        <div class="card-value">{{ summary.errors }}</div>
-      </div>
-    </div>
+    <section class="chart-band" aria-label="Scan trace">
+      <div class="chart-plot chart-roll" tabindex="0" role="group" aria-label="Chart, scrollable on narrow screens">
+        <svg viewBox="0 0 {{ chart.width|int }} {{ chart.height|int }}" role="img"
+             aria-label="{{ summary.findings }} findings plotted by file position and severity">
+          <defs>
+            <pattern id="chart-paper" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path class="chart-grid-fine" d="M 20 0 L 0 0 0 20" fill="none"></path>
+            </pattern>
+            <pattern id="chart-paper-coarse" width="100" height="100" patternUnits="userSpaceOnUse">
+              <rect width="100" height="100" fill="url(#chart-paper)"></rect>
+              <path class="chart-grid-coarse" d="M 100 0 L 0 0 0 100" fill="none"></path>
+            </pattern>
+          </defs>
+          <rect x="{{ chart.plot_left }}" y="14" width="{{ chart.plot_right - chart.plot_left }}"
+                height="{{ chart.height|int - 22 }}" fill="url(#chart-paper-coarse)"></rect>
 
-    {% if rule_distribution %}
-    <div class="section">
-      <h2 class="section-title">Rule Distribution</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Rule ID</th>
-            <th>Severity</th>
-            <th>Description</th>
-            <th>Count</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for rule_id, info in rule_distribution.items() %}
-          <tr>
-            <td><code>{{ rule_id }}</code></td>
-            <td><span class="badge badge-{{ info.severity }}">{{ info.severity }}</span></td>
-            <td>{{ info.description }}</td>
-            <td><strong>{{ info.count }}</strong></td>
-          </tr>
+          <rect class="chart-frame" x="{{ chart.plot_left }}" y="14"
+                width="{{ chart.plot_right - chart.plot_left }}" height="{{ chart.height|int - 22 }}"></rect>
+
+          {% for level in chart.severity_levels %}
+          <line class="grid-line" x1="{{ chart.plot_left }}" y1="{{ level.y }}"
+                x2="{{ chart.plot_right }}" y2="{{ level.y }}"></line>
+          <text class="scale-mark" x="{{ chart.plot_left - 16 }}" y="{{ level.y + 3.5 }}">{{ level.label }}</text>
+          <line class="scale-tick" x1="{{ chart.plot_left - 10 }}" y1="{{ level.y }}"
+                x2="{{ chart.plot_left }}" y2="{{ level.y }}"></line>
           {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
 
-    <div class="section">
-      <h2 class="section-title">Detailed Findings</h2>
+          {% for block in chart.blocks %}
+            {% if not loop.first %}
+            <line class="block-divider" x1="{{ block.start }}" y1="24"
+                  x2="{{ block.start }}" y2="{{ chart.height|int - 8 }}"></line>
+            {% endif %}
+          {% endfor %}
+
+          <polyline class="trace" points="{{ chart.trace }}"></polyline>
+
+          {% for event in chart.events %}
+          <g class="event" data-finding="{{ event.index }}" tabindex="0" role="button"
+             style="animation-delay: {{ 300 + loop.index0 * 160 }}ms"
+             aria-label="Finding {{ event.index }}: {{ event.rule_id }}, {{ event.severity }}, at {{ event.file }} line {{ event.line }}">
+            <line class="event-drop" x1="{{ event.x }}" y1="{{ event.y }}"
+                  x2="{{ event.x }}" y2="{{ chart.baseline_y }}"></line>
+            <polyline class="event-ink event-ink-{{ event.severity }}" points="{{ event.peak }}"></polyline>
+            {% if event.glyph == "triangle" %}
+            <polygon class="event-mark-{{ event.severity }}"
+                     points="{{ event.x }},{{ event.y - 9 }} {{ event.x + 7 }},{{ event.y + 3 }} {{ event.x - 7 }},{{ event.y + 3 }}"></polygon>
+            {% elif event.glyph == "circle" %}
+            <circle class="event-mark-{{ event.severity }}" cx="{{ event.x }}" cy="{{ event.y - 2 }}" r="6"></circle>
+            {% elif event.glyph == "diamond" %}
+            <polygon class="event-mark-{{ event.severity }}"
+                     points="{{ event.x }},{{ event.y - 9 }} {{ event.x + 6.5 }},{{ event.y - 2 }} {{ event.x }},{{ event.y + 5 }} {{ event.x - 6.5 }},{{ event.y - 2 }}"></polygon>
+            {% else %}
+            <rect class="event-mark-{{ event.severity }}" x="{{ event.x - 6 }}" y="{{ event.y - 6 }}" width="12" height="6"></rect>
+            {% endif %}
+            <circle class="event-halo" cx="{{ event.x }}" cy="{{ event.y - 2 }}" r="13"></circle>
+            <text class="event-number" x="{{ event.x }}" y="{{ event.y - 16 }}">{{ event.index }}</text>
+          </g>
+          {% endfor %}
+
+          <line class="block-divider" x1="{{ chart.plot_left }}" y1="{{ chart.height|int - 8 }}"
+                x2="{{ chart.plot_right }}" y2="{{ chart.height|int - 8 }}"></line>
+        </svg>
+
+        <div class="file-axis">
+          {% for block in chart.blocks %}
+          <div class="axis-file"
+               style="left: {{ (block.start / chart.width * 100)|round(3) }}%; width: {{ ((block.end - block.start) / chart.width * 100)|round(3) }}%;">{{ block.file }}</div>
+          {% else %}
+          <div class="axis-file axis-empty">{{ summary.files_scanned }} file{{ '' if summary.files_scanned == 1 else 's' }} scanned, no deflection recorded</div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="reading" aria-label="Findings">
+      <div class="reading-head">
+        <h2 class="reading-title">Reading</h2>
+        {% if findings %}
+        <div class="filters" role="group" aria-label="Filter by severity">
+          <button class="filter" type="button" data-filter="all" aria-pressed="true">All {{ summary.findings }}</button>
+          {% if summary.critical %}<button class="filter" type="button" data-filter="critical" aria-pressed="false">Critical {{ summary.critical }}</button>{% endif %}
+          {% if summary.high %}<button class="filter" type="button" data-filter="high" aria-pressed="false">High {{ summary.high }}</button>{% endif %}
+          {% if summary.medium %}<button class="filter" type="button" data-filter="medium" aria-pressed="false">Medium {{ summary.medium }}</button>{% endif %}
+          {% if summary.low %}<button class="filter" type="button" data-filter="low" aria-pressed="false">Low {{ summary.low }}</button>{% endif %}
+        </div>
+        {% endif %}
+      </div>
+
       {% if findings %}
       <table>
+        <colgroup>
+          <col class="col-index"><col class="col-sev"><col class="col-rule">
+          <col class="col-coordinate"><col class="col-field"><col class="col-value"><col>
+        </colgroup>
         <thead>
           <tr>
-            <th>Severity</th>
-            <th>Rule & Description</th>
-            <th>Location</th>
-            <th>Resource</th>
-            <th>Field & Masked Value</th>
+            <th scope="col">N&deg;</th>
+            <th scope="col">Sev</th>
+            <th scope="col">Rule</th>
+            <th scope="col">Coordinate</th>
+            <th scope="col">Field</th>
+            <th scope="col">Masked value</th>
+            <th scope="col">Action</th>
           </tr>
         </thead>
         <tbody>
           {% for finding in findings %}
-          <tr>
-            <td><span class="badge badge-{{ finding.severity }}">{{ finding.severity }}</span></td>
-            <td>
-              <code>{{ finding.rule_id }}</code>
-              <div style="font-size: 0.8125rem; color: #cbd5e1; margin-top: 0.25rem;">{{ finding.description }}</div>
-              <div class="remediation"><strong>Remediation:</strong> {{ finding.remediation }}</div>
+          <tr id="finding-{{ loop.index }}" data-severity="{{ finding.severity }}">
+            <td class="cell-index" data-caption="N&deg;">{{ loop.index }}</td>
+            <td data-caption="Severity">
+              <span class="sev rule-{{ finding.severity }}">
+                <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true" fill="currentColor">
+                  {% if finding.severity == "critical" %}<polygon points="6,1 11,10 1,10"></polygon>
+                  {% elif finding.severity == "high" %}<circle cx="6" cy="6" r="5"></circle>
+                  {% elif finding.severity == "medium" %}<polygon points="6,1 11,6 6,11 1,6"></polygon>
+                  {% else %}<rect x="1" y="4" width="10" height="4"></rect>{% endif %}
+                </svg>{{ finding.severity }}
+              </span>
             </td>
-            <td>
-              <span class="location-tag">{{ finding.file }}:{{ finding.line }}:{{ finding.column }}</span>
-            </td>
-            <td>
-              {% if finding.kind or finding.resource %}
-                <strong>{{ finding.kind or 'Resource' }}</strong> / {{ finding.resource or 'Unnamed' }}
-              {% else %}
-                <span style="color: var(--text-secondary);">-</span>
-              {% endif %}
-            </td>
-            <td>
-              <div style="margin-bottom: 0.375rem;"><span style="color: var(--text-secondary);">Field:</span> <code>{{ finding.field_path }}</code></div>
-              <div><span style="color: var(--text-secondary);">Match:</span> <code>{{ finding.match }}</code></div>
-            </td>
+            <td class="cell-rule rule-{{ finding.severity }}" data-caption="Rule">{{ finding.rule_id }}</td>
+            <td class="coordinate" data-caption="Coordinate">{{ finding.file }}:{{ finding.line }}:{{ finding.column }}</td>
+            <td class="field-path" data-caption="Field"><span class="clamp">{{ finding.field_path }}{% if finding.kind or finding.resource %}<br>{{ finding.kind or 'Resource' }}/{{ finding.resource or 'Unnamed' }}{% endif %}</span></td>
+            <td data-caption="Masked value"><span class="masked">{{ finding.match }}</span></td>
+            <td class="action" data-caption="Action"><span class="clamp">{{ finding.remediation }}</span></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
       {% else %}
-      <div class="empty-state">
-        <p>No secret credentials detected in scanned manifests.</p>
+      <div class="clean-sheet">
+        <strong>No secret credentials detected</strong>
+        <span>The pen stayed on the baseline across {{ summary.files_scanned }} scanned file{{ '' if summary.files_scanned == 1 else 's' }}.</span>
       </div>
       {% endif %}
-    </div>
+    </section>
 
     {% if errors %}
-    <div class="section">
-      <h2 class="section-title" style="border-left-color: var(--critical);">Scan Warnings & Errors</h2>
+    <section class="reading" aria-label="Scan errors">
+      <div class="reading-head">
+        <h2 class="reading-title">Interruptions</h2>
+      </div>
       <table>
         <thead>
           <tr>
-            <th>File</th>
-            <th>Message</th>
+            <th scope="col">File</th>
+            <th scope="col">Message</th>
           </tr>
         </thead>
         <tbody>
           {% for error in errors %}
           <tr>
-            <td><code>{{ error.file }}</code></td>
-            <td style="color: #fca5a5;">{{ error.message }}</td>
+            <td class="coordinate" data-caption="File">{{ error.file }}</td>
+            <td data-caption="Message">{{ error.message }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-    </div>
+    </section>
     {% endif %}
 
-    <footer>
-      SecretScanner-K8s | Automated Security Analysis for Kubernetes Manifests | Go Engine + Python Reporter
+    <footer class="sheet-foot">
+      <span>SecretScanner-K8s &middot; Go detection engine, Python reporter</span>
+      <a href="https://github.com/GuilhermeSetton/SecretScanner">github.com/GuilhermeSetton/SecretScanner</a>
     </footer>
-  </div>
+  </main>
+
+  <script>
+    // Progressive enhancement only: the sheet is complete and readable with
+    // this script removed.
+    (function () {
+      var trace = document.querySelector('.trace');
+      if (trace && typeof trace.getTotalLength === 'function') {
+        var length = Math.ceil(trace.getTotalLength());
+        trace.style.setProperty('--trace-length', length);
+      }
+
+      function cite(index) {
+        var row = document.getElementById('finding-' + index);
+        if (!row) return;
+        var previous = document.querySelector('tr.is-cited');
+        if (previous) previous.classList.remove('is-cited');
+        row.classList.add('is-cited');
+        row.classList.add('is-open');
+        row.setAttribute('aria-expanded', 'true');
+        row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+
+      document.querySelectorAll('.event').forEach(function (event) {
+        var index = event.getAttribute('data-finding');
+        event.addEventListener('click', function () { cite(index); });
+        event.addEventListener('keydown', function (keyEvent) {
+          if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+            keyEvent.preventDefault();
+            cite(index);
+          }
+        });
+      });
+
+      // One line per finding until the reader asks for the rest.
+      var rows = Array.prototype.slice.call(document.querySelectorAll('tbody tr[data-severity]'));
+      rows.forEach(function (row) {
+        row.classList.add('is-clamped');
+        row.tabIndex = 0;
+        row.setAttribute('role', 'button');
+        row.setAttribute('aria-expanded', 'false');
+        function toggle() {
+          var open = row.classList.toggle('is-open');
+          row.setAttribute('aria-expanded', String(open));
+        }
+        row.addEventListener('click', toggle);
+        row.addEventListener('keydown', function (keyEvent) {
+          if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+            keyEvent.preventDefault();
+            toggle();
+          }
+        });
+      });
+
+      var filters = Array.prototype.slice.call(document.querySelectorAll('.filter'));
+      filters.forEach(function (button) {
+        button.addEventListener('click', function () {
+          var wanted = button.getAttribute('data-filter');
+          filters.forEach(function (other) {
+            other.setAttribute('aria-pressed', String(other === button));
+          });
+          document.querySelectorAll('tbody tr[data-severity]').forEach(function (row) {
+            row.hidden = wanted !== 'all' && row.getAttribute('data-severity') !== wanted;
+          });
+          document.querySelectorAll('.event').forEach(function (event) {
+            var index = event.getAttribute('data-finding');
+            var row = document.getElementById('finding-' + index);
+            event.style.opacity = row && row.hidden ? '0.22' : '';
+          });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

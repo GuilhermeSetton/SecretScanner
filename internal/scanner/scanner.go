@@ -72,6 +72,9 @@ type ScannerOptions struct {
 	Workers          int
 	CustomRules      []rules.Rule
 	EntropyThreshold float64
+	// EntropyAllowlist holds regular expressions for values the entropy
+	// detector must ignore, on top of its built-in shape checks.
+	EntropyAllowlist []string
 	MaxFileSize      int64
 	Verbose          bool
 }
@@ -124,7 +127,7 @@ func NewScanner(opts ScannerOptions) *Scanner {
 	detectorList := []detectors.Detector{
 		detectors.NewRegexDetector(opts.CustomRules),
 		detectors.NewJWTDetector(),
-		detectors.NewEntropyDetector(opts.EntropyThreshold),
+		detectors.NewEntropyDetectorWithAllowlist(opts.EntropyThreshold, opts.EntropyAllowlist),
 		detectors.NewK8sEnvDetector(),
 	}
 

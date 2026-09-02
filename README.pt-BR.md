@@ -132,6 +132,23 @@ kubectl apply -f examples/clean/deployment.yaml
 | `internal.sensitive-env-var` | Nomes sensíveis (`PASSWORD`, `TOKEN`) em variáveis de ambiente em texto puro | High | High |
 | `internal.shannon-entropy` | Strings de alta entropia (Shannon $H \ge 4.5$) | Medium | Medium |
 
+### Falsos positivos de entropia
+
+A regra de entropia é auxiliar: só roda em contextos sensíveis, e o match é descartado
+quando o valor tem uma forma que nunca guarda credencial — chaves públicas e
+certificados, referências a gerenciadores de segredo (ARNs da AWS, caminhos do Vault,
+nomes de recurso do GCP), URLs sem credencial embutida, hashes de senha `crypt(3)` e
+PHC, data URIs e templates Helm ou envsubst não resolvidos. As regras de padrão
+específico não são afetadas: uma credencial real encontrada dentro de uma dessas formas
+continua sendo reportada pela regra própria.
+
+Para silenciar valores específicos dos seus manifestos, use `-entropy-allow` com uma
+expressão regular. A flag pode ser repetida:
+
+```bash
+secretscanner -dir ./manifests -entropy-allow '^registry\.internal/' -entropy-allow '^build-id-'
+```
+
 ---
 
 ## Garantias de segurança e anti-leak

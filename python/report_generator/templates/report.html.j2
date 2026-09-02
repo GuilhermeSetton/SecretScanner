@@ -6,201 +6,438 @@
   <title>SecretScanner-K8s Security Report</title>
   <style>
     :root {
-      --bg-primary: #0f172a;
-      --bg-secondary: #1e293b;
-      --bg-card: #1e293b;
-      --text-primary: #f8fafc;
-      --text-secondary: #94a3b8;
-      --border-color: #334155;
-      --critical: #ef4444;
-      --high: #f97316;
-      --medium: #eab308;
-      --low: #3b82f6;
-      --success: #10b981;
-      --code-bg: #0f172a;
+      color-scheme: light dark;
+
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --surface-alt: #f5f3ed;
+      --border: #e5e1d6;
+      --border-strong: #d6d1c2;
+      --text: #1a1a18;
+      --text-muted: #6c6960;
+      --accent: #c96442;
+      --accent-soft: #f6e8e2;
+
+      --critical: #a32f26;
+      --critical-bg: #fbe9e5;
+      --high: #a8601a;
+      --high-bg: #fbefe0;
+      --medium: #7d6310;
+      --medium-bg: #f7f0d8;
+      --low: #3d647f;
+      --low-bg: #e8eff5;
+      --ok: #3c6742;
+      --ok-bg: #e6f0e6;
+
+      --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+      --radius: 10px;
+      --radius-sm: 6px;
     }
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1b1a18;
+        --surface: #232220;
+        --surface-alt: #2a2825;
+        --border: #37342e;
+        --border-strong: #47433b;
+        --text: #f2f0e9;
+        --text-muted: #a5a197;
+        --accent: #e08b6b;
+        --accent-soft: #3a2b25;
+
+        --critical: #f0897c;
+        --critical-bg: #3a211d;
+        --high: #e0a163;
+        --high-bg: #382a1a;
+        --medium: #d6c274;
+        --medium-bg: #322d19;
+        --low: #93b8d6;
+        --low-bg: #1e2a33;
+        --ok: #90c091;
+        --ok-bg: #1e2e20;
+      }
     }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body, h1, h2, h3, p, figure, table { margin: 0; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg-primary);
-      color: var(--text-primary);
-      line-height: 1.5;
-      padding: 2rem;
+      font-family: var(--font-sans);
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 15px;
+      padding: 2.5rem 1.25rem 4rem;
+      -webkit-font-smoothing: antialiased;
     }
+
     .container {
-      max-width: 1200px;
+      max-width: 68rem;
       margin: 0 auto;
     }
+
+    /* ---------- header ---------- */
+
     header {
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 1.5rem;
-      margin-bottom: 2rem;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
       flex-wrap: wrap;
-      gap: 1rem;
+      gap: 1.25rem;
+      padding-bottom: 1.75rem;
+      border-bottom: 1px solid var(--border);
     }
-    .header-title h1 {
-      font-size: 1.875rem;
-      font-weight: 700;
-      color: #fff;
-    }
-    .header-title p {
-      color: var(--text-secondary);
-      font-size: 0.875rem;
-      margin-top: 0.25rem;
-    }
-    .status-badge {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      border-radius: 0.375rem;
-      font-weight: 700;
-      font-size: 0.875rem;
+
+    .eyebrow {
+      font-size: 0.6875rem;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
     }
-    .status-passed { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
-    .status-failed { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
-    .status-error { background: #78350f; color: #fde68a; border: 1px solid #d97706; }
+
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.15;
+    }
+
+    .header-meta {
+      margin-top: 0.625rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .header-meta span + span::before {
+      content: "·";
+      margin: 0 0.5rem;
+      color: var(--border-strong);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.875rem;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .status-badge::before {
+      content: "";
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-passed { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+    .status-failed { background: var(--critical-bg); color: var(--critical); border-color: var(--critical); }
+    .status-error { background: var(--high-bg); color: var(--high); border-color: var(--high); }
+
+    /* ---------- sections ---------- */
+
+    .section { margin-top: 2.75rem; }
+
+    .section-title {
+      font-family: var(--font-serif);
+      font-size: 1.375rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.375rem;
+    }
+
+    .section-note {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 1.125rem;
+    }
+
+    /* ---------- summary ---------- */
+
+    .severity-bar {
+      display: flex;
+      height: 0.625rem;
+      border-radius: 999px;
+      overflow: hidden;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      margin-bottom: 0.875rem;
+    }
+
+    .severity-bar span { display: block; height: 100%; }
+    .bar-critical { background: var(--critical); }
+    .bar-high { background: var(--high); }
+    .bar-medium { background: var(--medium); }
+    .bar-low { background: var(--low); }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.25rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
+    }
+
+    .legend-item { display: inline-flex; align-items: center; gap: 0.4375rem; }
+
+    .legend-dot {
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .legend-count { color: var(--text); font-weight: 600; }
 
     .grid-cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
+      grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+      gap: 0.875rem;
     }
+
     .card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 0.5rem;
-      padding: 1.25rem;
-      text-align: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.125rem;
     }
+
     .card-label {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
+      font-size: 0.6875rem;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
       font-weight: 600;
-      margin-bottom: 0.5rem;
+      color: var(--text-muted);
     }
+
     .card-value {
-      font-size: 1.75rem;
-      font-weight: 700;
-      color: #fff;
+      font-family: var(--font-serif);
+      font-size: 2rem;
+      font-weight: 600;
+      line-height: 1.2;
+      margin-top: 0.25rem;
+      font-variant-numeric: tabular-nums;
     }
+
+    .card-value.is-zero { color: var(--text-muted); font-weight: 400; }
+
     .val-critical { color: var(--critical); }
     .val-high { color: var(--high); }
     .val-medium { color: var(--medium); }
     .val-low { color: var(--low); }
 
-    .section {
-      margin-bottom: 2.5rem;
-    }
-    .section-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 1rem;
-      color: #fff;
-      border-left: 4px solid var(--low);
-      padding-left: 0.75rem;
+    /* ---------- table ---------- */
+
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--bg-card);
-      border-radius: 0.5rem;
-      overflow: hidden;
-      border: 1px solid var(--border-color);
-    }
+    table { width: 100%; border-collapse: collapse; }
+
     th, td {
-      padding: 0.875rem 1rem;
+      padding: 0.8125rem 1rem;
       text-align: left;
       font-size: 0.875rem;
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border);
       vertical-align: top;
     }
+
     th {
-      background: #111827;
-      color: var(--text-secondary);
+      background: var(--surface-alt);
+      color: var(--text-muted);
       font-weight: 600;
       text-transform: uppercase;
-      font-size: 0.75rem;
-      letter-spacing: 0.05em;
+      font-size: 0.6875rem;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
     }
-    tr:last-child td {
-      border-bottom: none;
+
+    tr:last-child td { border-bottom: none; }
+
+    .count-cell {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      text-align: right;
     }
-    tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
-    }
+
+    /* ---------- badges & code ---------- */
 
     .badge {
       display: inline-block;
-      padding: 0.2rem 0.5rem;
-      border-radius: 0.25rem;
-      font-size: 0.75rem;
+      padding: 0.1875rem 0.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.6875rem;
       font-weight: 700;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
+      border: 1px solid transparent;
+      white-space: nowrap;
     }
-    .badge-critical { background: #7f1d1d; color: #fca5a5; }
-    .badge-high { background: #7c2d12; color: #fdba74; }
-    .badge-medium { background: #713f12; color: #fde047; }
-    .badge-low { background: #1e3a8a; color: #93c5fd; }
+
+    .badge-critical { background: var(--critical-bg); color: var(--critical); border-color: var(--critical); }
+    .badge-high { background: var(--high-bg); color: var(--high); border-color: var(--high); }
+    .badge-medium { background: var(--medium-bg); color: var(--medium); border-color: var(--medium); }
+    .badge-low { background: var(--low-bg); color: var(--low); border-color: var(--low); }
 
     code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      background: var(--code-bg);
-      border: 1px solid var(--border-color);
-      padding: 0.2rem 0.4rem;
-      border-radius: 0.25rem;
+      font-family: var(--font-mono);
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      padding: 0.125rem 0.375rem;
+      border-radius: var(--radius-sm);
       font-size: 0.8125rem;
-      color: #38bdf8;
       word-break: break-all;
     }
-    .remediation {
+
+    /* ---------- findings ---------- */
+
+    .findings { display: grid; gap: 0.875rem; }
+
+    .finding {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--border-strong);
+      border-radius: var(--radius);
+      padding: 1.125rem 1.25rem;
+    }
+
+    .finding-critical { border-left-color: var(--critical); }
+    .finding-high { border-left-color: var(--high); }
+    .finding-medium { border-left-color: var(--medium); }
+    .finding-low { border-left-color: var(--low); }
+
+    .finding-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.625rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .finding-rule {
+      font-family: var(--font-mono);
       font-size: 0.8125rem;
-      color: #94a3b8;
-      margin-top: 0.375rem;
-      background: rgba(15, 23, 42, 0.5);
-      padding: 0.5rem;
-      border-radius: 0.25rem;
-      border-left: 3px solid #64748b;
+      font-weight: 600;
     }
-    .location-tag {
-      color: #a5b4fc;
-      font-family: ui-monospace, SFMono-Regular, monospace;
-      font-size: 0.8125rem;
-    }
-    .empty-state {
-      padding: 3rem;
-      text-align: center;
-      color: var(--text-secondary);
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 0.5rem;
-    }
-    footer {
-      border-top: 1px solid var(--border-color);
-      padding-top: 1.5rem;
-      margin-top: 3rem;
-      text-align: center;
+
+    .finding-confidence {
       font-size: 0.75rem;
-      color: var(--text-secondary);
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    .finding-desc { font-size: 0.9375rem; margin-bottom: 0.875rem; }
+
+    .finding-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      gap: 0.75rem 1.5rem;
+      padding-top: 0.875rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .field-label {
+      font-size: 0.6875rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+    }
+
+    .field-value {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      word-break: break-all;
+    }
+
+    .remediation {
+      margin-top: 0.875rem;
+      padding: 0.75rem 0.875rem;
+      background: var(--accent-soft);
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      line-height: 1.5;
+    }
+
+    .remediation-label {
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-size: 0.6875rem;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .empty-state {
+      padding: 3.5rem 1.5rem;
+      text-align: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .empty-state strong {
+      font-family: var(--font-serif);
+      font-size: 1.25rem;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 0.375rem;
+    }
+
+    .empty-state p { color: var(--text-muted); font-size: 0.875rem; }
+
+    footer {
+      margin-top: 3.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 34rem) {
+      body { padding: 1.75rem 1rem 3rem; }
+      .finding-confidence { margin-left: 0; width: 100%; }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <div class="header-title">
+      <div>
+        <div class="eyebrow">Kubernetes manifest scan</div>
         <h1>SecretScanner-K8s Report</h1>
-        <p>Scanner Version: {{ summary.scanner_version }} | Schema: v{{ schema_version }} | Duration: {{ summary.duration_ms }}ms</p>
+        <div class="header-meta">
+          <span>scanner {{ summary.scanner_version }}</span>
+          <span>schema v{{ schema_version }}</span>
+          <span>{{ summary.duration_ms }}ms</span>
+        </div>
       </div>
       <div>
         {% if status == "PASSED" %}
@@ -213,134 +450,177 @@
       </div>
     </header>
 
-    <div class="grid-cards">
-      <div class="card">
-        <div class="card-label">Files Scanned</div>
-        <div class="card-value">{{ summary.files_scanned }}</div>
+    <div class="section">
+      <h2 class="section-title">At a glance</h2>
+      <p class="section-note">
+        {% if summary.findings > 0 %}
+          {{ summary.findings }} finding{{ '' if summary.findings == 1 else 's' }}
+          across {{ affected_files_count }} of {{ summary.files_scanned }} scanned file{{ '' if summary.files_scanned == 1 else 's' }}.
+        {% else %}
+          No credentials found in {{ summary.files_scanned }} scanned file{{ '' if summary.files_scanned == 1 else 's' }}.
+        {% endif %}
+      </p>
+
+      {% if summary.findings > 0 %}
+      <div class="severity-bar">
+        {% if summary.critical %}<span class="bar-critical" style="width: {{ (summary.critical * 100.0 / summary.findings) | round(3) }}%"></span>{% endif %}
+        {% if summary.high %}<span class="bar-high" style="width: {{ (summary.high * 100.0 / summary.findings) | round(3) }}%"></span>{% endif %}
+        {% if summary.medium %}<span class="bar-medium" style="width: {{ (summary.medium * 100.0 / summary.findings) | round(3) }}%"></span>{% endif %}
+        {% if summary.low %}<span class="bar-low" style="width: {{ (summary.low * 100.0 / summary.findings) | round(3) }}%"></span>{% endif %}
       </div>
-      <div class="card">
-        <div class="card-label">Total Findings</div>
-        <div class="card-value">{{ summary.findings }}</div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot bar-critical"></span>Critical <span class="legend-count">{{ summary.critical }}</span></span>
+        <span class="legend-item"><span class="legend-dot bar-high"></span>High <span class="legend-count">{{ summary.high }}</span></span>
+        <span class="legend-item"><span class="legend-dot bar-medium"></span>Medium <span class="legend-count">{{ summary.medium }}</span></span>
+        <span class="legend-item"><span class="legend-dot bar-low"></span>Low <span class="legend-count">{{ summary.low }}</span></span>
       </div>
-      <div class="card">
-        <div class="card-label">Critical</div>
-        <div class="card-value val-critical">{{ summary.critical }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">High</div>
-        <div class="card-value val-high">{{ summary.high }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Medium</div>
-        <div class="card-value val-medium">{{ summary.medium }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Low</div>
-        <div class="card-value val-low">{{ summary.low }}</div>
-      </div>
-      <div class="card">
-        <div class="card-label">Scan Errors</div>
-        <div class="card-value">{{ summary.errors }}</div>
+      {% endif %}
+
+      <div class="grid-cards">
+        <div class="card">
+          <div class="card-label">Files scanned</div>
+          <div class="card-value{{ ' is-zero' if summary.files_scanned == 0 }}">{{ summary.files_scanned }}</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Affected files</div>
+          <div class="card-value{{ ' is-zero' if affected_files_count == 0 }}">{{ affected_files_count }}</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Total findings</div>
+          <div class="card-value{{ ' is-zero' if summary.findings == 0 }}">{{ summary.findings }}</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Critical</div>
+          <div class="card-value val-critical{{ ' is-zero' if summary.critical == 0 }}">{{ summary.critical }}</div>
+        </div>
+        <div class="card">
+          <div class="card-label">High</div>
+          <div class="card-value val-high{{ ' is-zero' if summary.high == 0 }}">{{ summary.high }}</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Medium</div>
+          <div class="card-value val-medium{{ ' is-zero' if summary.medium == 0 }}">{{ summary.medium }}</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Low</div>
+          <div class="card-value val-low{{ ' is-zero' if summary.low == 0 }}">{{ summary.low }}</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Scan errors</div>
+          <div class="card-value{{ ' is-zero' if summary.errors == 0 }}">{{ summary.errors }}</div>
+        </div>
       </div>
     </div>
 
     {% if rule_distribution %}
     <div class="section">
-      <h2 class="section-title">Rule Distribution</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Rule ID</th>
-            <th>Severity</th>
-            <th>Description</th>
-            <th>Count</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for rule_id, info in rule_distribution.items() %}
-          <tr>
-            <td><code>{{ rule_id }}</code></td>
-            <td><span class="badge badge-{{ info.severity }}">{{ info.severity }}</span></td>
-            <td>{{ info.description }}</td>
-            <td><strong>{{ info.count }}</strong></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <h2 class="section-title">Rules triggered</h2>
+      <p class="section-note">Which detection rules produced the findings below.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th>Severity</th>
+              <th>Description</th>
+              <th class="count-cell">Findings</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rule_id, info in rule_distribution.items() %}
+            <tr>
+              <td><code>{{ rule_id }}</code></td>
+              <td><span class="badge badge-{{ info.severity }}">{{ info.severity }}</span></td>
+              <td>{{ info.description }}</td>
+              <td class="count-cell">{{ info.count }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
     {% endif %}
 
     <div class="section">
-      <h2 class="section-title">Detailed Findings</h2>
+      <h2 class="section-title">Detailed findings</h2>
       {% if findings %}
-      <table>
-        <thead>
-          <tr>
-            <th>Severity</th>
-            <th>Rule & Description</th>
-            <th>Location</th>
-            <th>Resource</th>
-            <th>Field & Masked Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for finding in findings %}
-          <tr>
-            <td><span class="badge badge-{{ finding.severity }}">{{ finding.severity }}</span></td>
-            <td>
-              <code>{{ finding.rule_id }}</code>
-              <div style="font-size: 0.8125rem; color: #cbd5e1; margin-top: 0.25rem;">{{ finding.description }}</div>
-              <div class="remediation"><strong>Remediation:</strong> {{ finding.remediation }}</div>
-            </td>
-            <td>
-              <span class="location-tag">{{ finding.file }}:{{ finding.line }}:{{ finding.column }}</span>
-            </td>
-            <td>
-              {% if finding.kind or finding.resource %}
-                <strong>{{ finding.kind or 'Resource' }}</strong> / {{ finding.resource or 'Unnamed' }}
-              {% else %}
-                <span style="color: var(--text-secondary);">-</span>
-              {% endif %}
-            </td>
-            <td>
-              <div style="margin-bottom: 0.375rem;"><span style="color: var(--text-secondary);">Field:</span> <code>{{ finding.field_path }}</code></div>
-              <div><span style="color: var(--text-secondary);">Match:</span> <code>{{ finding.match }}</code></div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <p class="section-note">Every matched value is masked before it reaches this report.</p>
+      <div class="findings">
+        {% for finding in findings %}
+        <article class="finding finding-{{ finding.severity }}">
+          <div class="finding-head">
+            <span class="badge badge-{{ finding.severity }}">{{ finding.severity }}</span>
+            <span class="finding-rule">{{ finding.rule_id }}</span>
+            <span class="finding-confidence">{{ finding.confidence }} confidence</span>
+          </div>
+          <p class="finding-desc">{{ finding.description }}</p>
+          <div class="finding-grid">
+            <div>
+              <div class="field-label">Location</div>
+              <div class="field-value">{{ finding.file }}:{{ finding.line }}:{{ finding.column }}</div>
+            </div>
+            <div>
+              <div class="field-label">Resource</div>
+              <div class="field-value">
+                {%- if finding.kind or finding.resource -%}
+                  {{ finding.kind or 'Resource' }}/{{ finding.resource or 'Unnamed' }}
+                {%- else -%}
+                  &mdash;
+                {%- endif -%}
+              </div>
+            </div>
+            <div>
+              <div class="field-label">Field</div>
+              <div class="field-value">{{ finding.field_path }}</div>
+            </div>
+            <div>
+              <div class="field-label">Masked match</div>
+              <div class="field-value">{{ finding.match }}</div>
+            </div>
+          </div>
+          <div class="remediation">
+            <span class="remediation-label">Remediation</span>
+            {{ finding.remediation }}
+          </div>
+        </article>
+        {% endfor %}
+      </div>
       {% else %}
       <div class="empty-state">
-        <p>No secret credentials detected in scanned manifests.</p>
+        <strong>No secret credentials detected</strong>
+        <p>None of the scanned manifests contain hardcoded credentials.</p>
       </div>
       {% endif %}
     </div>
 
     {% if errors %}
     <div class="section">
-      <h2 class="section-title" style="border-left-color: var(--critical);">Scan Warnings & Errors</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>File</th>
-            <th>Message</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for error in errors %}
-          <tr>
-            <td><code>{{ error.file }}</code></td>
-            <td style="color: #fca5a5;">{{ error.message }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <h2 class="section-title">Warnings and errors</h2>
+      <p class="section-note">Files the scanner could not fully process.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for error in errors %}
+            <tr>
+              <td><code>{{ error.file }}</code></td>
+              <td>{{ error.message }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
     {% endif %}
 
     <footer>
-      SecretScanner-K8s | Automated Security Analysis for Kubernetes Manifests | Go Engine + Python Reporter
+      <span>SecretScanner-K8s &mdash; Go detection engine, Python reporter</span>
+      <a href="https://github.com/GuilhermeSetton/SecretScanner">github.com/GuilhermeSetton/SecretScanner</a>
     </footer>
   </div>
 </body>

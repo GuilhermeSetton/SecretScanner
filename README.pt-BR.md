@@ -118,6 +118,8 @@ kubectl apply -f examples/clean/deployment.yaml
        +--------------------+
 ```
 
+O motor Go e o gerador Python compartilham o [contrato JSON v1.0](docs/schema/README.md) estrito. O JSON Schema canônico é versionado com o repositório; produtores e consumidores recusam versões não suportadas em vez de presumir compatibilidade.
+
 ---
 
 ## Regras nativas de detecção

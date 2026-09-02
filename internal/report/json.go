@@ -30,6 +30,13 @@ func (f *JSONFormatter) Format(w io.Writer, report *scanner.ScanReport) error {
 	if schemaVersion == "" {
 		schemaVersion = scanner.CurrentSchemaVersion
 	}
+	if schemaVersion != scanner.CurrentSchemaVersion {
+		return fmt.Errorf(
+			"unsupported scan report schema version %q (supported: %q)",
+			schemaVersion,
+			scanner.CurrentSchemaVersion,
+		)
+	}
 
 	jsonOut := JSONReport{
 		SchemaVersion: schemaVersion,

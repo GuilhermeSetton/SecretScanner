@@ -76,7 +76,7 @@ jobs:
           test -s scan-output/quickstart-result.json
           test -s scan-output/quickstart-report.html
           python3 -c 'import json; data = json.load(open("scan-output/quickstart-result.json", encoding="utf-8")); assert data["summary"]["findings"] >= 5; assert data["summary"]["errors"] == 0; assert all("*" in finding["match"] for finding in data["findings"])'
-          grep -q "SecretScanner-K8s Security Report" scan-output/quickstart-report.html
+          grep -q "<title>SecretScanner-K8s Report</title>" scan-output/quickstart-report.html
 
       - name: Self-scan repository YAML
         run: docker compose run --rm --entrypoint sh quickstart /workspace/scripts/self-scan.sh

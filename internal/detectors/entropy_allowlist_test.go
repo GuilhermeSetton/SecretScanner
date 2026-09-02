@@ -189,3 +189,30 @@ func TestEntropyDetector_UserAllowlist(t *testing.T) {
 		t.Errorf("expected valid patterns to still apply alongside invalid ones, got %d", len(matches))
 	}
 }
+
+func TestK8sEnvDetector_IgnoresTemplatesAndPlaceholders(t *testing.T) {
+	detector := NewK8sEnvDetector()
+	ctx := ScanContext{
+		File:      "deployment.yaml",
+		FieldPath: "spec.template.spec.containers[0].env[0].value",
+		KeyName:   "DATABASE_PASSWORD",
+	}
+
+	ignored := []string{
+		"{{ .Values.postgresql.auth.password }}",
+		"${DATABASE_PASSWORD_PROD}",
+		"<replace-me>",
+		"CHANGEME-BEFORE-DEPLOY-0123456789",
+		"placeholder-until-vault-is-wired",
+	}
+	for _, value := range ignored {
+		if matches := detector.Detect(value, ctx); len(matches) != 0 {
+			t.Errorf("expected %q to be ignored, got %d matches", value, len(matches))
+		}
+	}
+
+	// A value that merely looks structured is still a hardcoded credential.
+	if matches := detector.Detect("Sup3rS3cretDbPass!2026", ctx); len(matches) != 1 {
+		t.Errorf("expected a hardcoded credential to be reported, got %d matches", len(matches))
+	}
+}
